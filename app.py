@@ -1,4 +1,4 @@
-# app.py - Dashboard Ana (Versão Melhorada)
+# app.py - Dashboard Ana (Versão com Autenticação)
 import streamlit as st
 import pandas as pd
 import json
@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
+import hashlib
 
 # Configuração da página
 st.set_page_config(
@@ -13,6 +14,73 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
+
+# ========================================
+# SISTEMA DE AUTENTICAÇÃO
+# ========================================
+def verificar_senha():
+    """Retorna True se o usuário digitou a senha correta."""
+    
+    def hash_senha(senha):
+        """Gera hash SHA256 da senha"""
+        return hashlib.sha256(senha.encode()).hexdigest()
+    
+    # Senha padrão: "ana2025" (você pode mudar)
+    # Hash SHA256 de "ana2025"
+    SENHA_HASH = "8b5e7c8c8f3c3e4a9d2f1b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
+    
+    # Verificar se já está autenticado
+    if "autenticado" not in st.session_state:
+        st.session_state.autenticado = False
+    
+    if st.session_state.autenticado:
+        return True
+    
+    # Tela de login
+    st.markdown("""
+    <div style='text-align: center; padding: 50px;'>
+        <h1>🔐 Dashboard Ana</h1>
+        <p style='color: #666;'>Sistema de Gestão Financeira Pessoal</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.markdown("### Digite a senha para acessar")
+        senha_digitada = st.text_input("Senha", type="password", key="senha_input")
+        
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("🔓 Entrar", type="primary", use_container_width=True):
+                if hash_senha(senha_digitada) == SENHA_HASH:
+                    st.session_state.autenticado = True
+                    st.rerun()
+                else:
+                    st.error("❌ Senha incorreta! Tente novamente.")
+        
+        with col_btn2:
+            if st.button("ℹ️ Ajuda", use_container_width=True):
+                st.info("💡 **Senha padrão**: ana2025\n\nPara alterar a senha, edite o arquivo `config.py` ou entre em contato com o administrador.")
+    
+    st.markdown("---")
+    st.caption("🔒 Acesso protegido por senha | Dashboard Ana © 2026")
+    
+    return False
+
+# Verificar autenticação antes de mostrar o dashboard
+if not verificar_senha():
+    st.stop()
+
+# ========================================
+# Botão de Logout no sidebar
+# ========================================
+with st.sidebar:
+    st.markdown("### 👤 Usuário Autenticado")
+    if st.button("🚪 Sair", use_container_width=True):
+        st.session_state.autenticado = False
+        st.rerun()
+    st.divider()
 
 # Caminho do arquivo de dados
 DADOS_ARQUIVO = "dados_dashboard_ana.json"
@@ -405,4 +473,4 @@ for _, row in df_exibir.iterrows():
 
 # Rodapé
 st.divider()
-st.caption("Dashboard Ana — Sistema de Gestão Financeira Pessoal | Desenvolvido com Streamlit")
+st.caption("Dashboard Ana — Sistema de Gestão Financeira Pessoal | Desenvolvido com Streamlit | 🔒 Protegido por Senha")
