@@ -1,0 +1,34 @@
+========================================
+ADICIONAR EXCECAO NO MCAFEE
+========================================
+
+1. Abra o McAfee (icone na bandeja do sistema)
+
+2. Vá em "Configuracoes" ou "Settings"
+
+3. Procure por "Exclusoes" ou "Exclusions"
+
+4. Adicione arquivo:
+   C:\Windows\System32\drivers\etc\hosts
+
+5. Salve as alteracoes
+
+6. Agora pode editar normalmente:
+   notepad C:\Windows\System32\drivers\etc\hosts
+
+7. Adicione no final:
+   127.0.0.1    dashboard-ana
+
+8. Salve (Ctrl+S)
+
+========================================
+ALTERNATIVA: DESABILITAR TEMPORARIAMENTE
+========================================
+
+1. McAfee -> Configuracoes
+2. Protecao Real-Time -> Desativar
+3. Edite o arquivo hosts
+4. REATIVE imediatamente!
+
+========================================
+
