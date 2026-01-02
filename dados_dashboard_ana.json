@@ -1,0 +1,48 @@
+{
+  "itens": [
+    {
+      "id": "planoSaude",
+      "nome": "Plano de Saúde",
+      "valor": 1518.93,
+      "tipo": "credito",
+      "inicio": "jan/25",
+      "fim": "dez/28"
+    },
+    {
+      "id": "viagemNordeste",
+      "nome": "Viagem Nordeste",
+      "valor": 206.5,
+      "inicio": "set/25",
+      "fim": "jun/26",
+      "tipo": "debito"
+    },
+    {
+      "id": "geladeira",
+      "nome": "Geladeira",
+      "valor": 152.48,
+      "inicio": "jul/25",
+      "fim": "jun/27",
+      "tipo": "debito"
+    },
+    {
+      "id": "ferro",
+      "nome": "Ferro",
+      "valor": 219.99,
+      "tipo": "credito",
+      "inicio": "set/25",
+      "fim": "dez/26"
+    }
+  ],
+  "meses_quitados": [
+    "jan/25",
+    "fev/25",
+    "mar/25",
+    "abr/25",
+    "mai/25",
+    "jun/25",
+    "jul/25",
+    "ago/25",
+    "set/25",
+    "out/25"
+  ]
+}
