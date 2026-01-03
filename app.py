@@ -27,7 +27,7 @@ def verificar_senha():
     
     # Senha padrão: "ana2025" (você pode mudar)
     # Hash SHA256 de "ana2025"
-    SENHA_HASH = "8b5e7c8c8f3c3e4a9d2f1b6a7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d"
+    SENHA_HASH = "5fd698c40bb0cc98f7c00994b523dec70d4ddc3393e6d67de47a3c11be2d1984"
     
     # Verificar se já está autenticado
     if "autenticado" not in st.session_state:
