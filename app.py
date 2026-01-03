@@ -399,10 +399,15 @@ if FEATURE_ANTECIPACAO:
             meses_futuros = []
             
             for m in meses_ativos:
-                dt_m = get_date_from_str(m)
-                if dt_m > hoje:
-                    # Verificar se já foi totalmente antecipada
-                    # (Lógica simples: listar todos futuros)
+                # Regra: Permitir antecipar parcelas de qualquer mês que ainda não foi quitado
+                # Ou seja, se o mês já passou mas não foi marcado como quitado, ele é elegível.
+                # Se o mês é futuro, sempre é elegível.
+                
+                # Vamos checar se o mês está na lista de meses_quitados
+                is_quitado = m in st.session_state.meses_quitados
+                
+                if not is_quitado:
+                    # Verificar se já foi totalmente antecipada (opcional, mas bom pra UX)
                     meses_futuros.append(m)
             
             if not meses_futuros:

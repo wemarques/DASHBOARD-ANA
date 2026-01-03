@@ -29,6 +29,11 @@ def load_feature_flags():
     def get_flag(flag_name):
         env_var_name = flag_name.upper()
         
+        # Prioridade 0: Streamlit Secrets (Cloud)
+        if hasattr(st, "secrets") and env_var_name in st.secrets:
+            val = str(st.secrets[env_var_name]).lower()
+            return val in ("true", "1", "yes", "on")
+
         # Prioridade 1: Variável de ambiente direta
         if env_var_name in os.environ:
             val = os.environ[env_var_name].lower()
