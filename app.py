@@ -49,12 +49,9 @@ def verificar_senha():
     with col2:
         st.markdown("### Digite a senha para acessar")
         
-        # Garantir que o session_state existe
-        if "senha_input" not in st.session_state:
-            st.session_state.senha_input = ""
-        
         # Input de senha
-        senha_digitada = st.text_input("Senha", type="password", key="senha_input", value=st.session_state.get("senha_input", ""))
+        # Não inicializamos manualmente o session_state - o widget faz isso automaticamente
+        senha_digitada = st.text_input("Senha", type="password", key="senha_input")
         
         # Debug temporário (remover após testar)
         # st.write("Debug - Senha capturada:", "***" if senha_digitada else "(vazia)")
@@ -80,13 +77,11 @@ def verificar_senha():
             # Verificar senha
             if senha and hash_senha(senha) == SENHA_HASH:
                 st.session_state.autenticado = True
-                st.session_state.senha_input = ""  # Limpar senha após login
+                # Não podemos limpar senha_input manualmente - é controlado pelo widget
                 st.rerun()
             else:
                 st.error("❌ Senha incorreta! Tente novamente.")
-                # Limpar o campo após erro
-                if "senha_input" in st.session_state:
-                    st.session_state.senha_input = ""
+                # Não podemos limpar senha_input manualmente - o usuário pode limpar manualmente
         
         if ajuda_pressionado:
             st.info("💡 **Senha padrão**: ana2025\n\nPara alterar a senha, edite o arquivo `app.py` ou entre em contato com o administrador.")
