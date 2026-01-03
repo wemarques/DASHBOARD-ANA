@@ -8,6 +8,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import hashlib
 import config_manager  # Novo gerenciador de config
+from backend_antecipacao import AntecipacaoService  # Backend Antecipação
 
 # Configuração da página
 st.set_page_config(
@@ -19,6 +20,9 @@ st.set_page_config(
 # Inicializar Feature Flags
 config_manager.init_flags()
 FEATURE_ANTECIPACAO = st.session_state.flags["feature_antecipacao_parcelas"]
+
+# Inicializar Serviço de Antecipação
+antecipacao_service = AntecipacaoService()
 
 # ========================================
 # SISTEMA DE AUTENTICAÇÃO
@@ -200,8 +204,36 @@ def calcular_dataframe():
         col_name = item["id"]
         df[col_name] = 0.0
         meses_ativos = get_meses_entre(item["inicio"], item["fim"])
+        
+        # 1. Calcular valores base (recorrência normal)
         df.loc[df["mesAno"].isin(meses_ativos), col_name] = item["valor"]
-    
+        
+        # 2. Aplicar Antecipações (se feature ativa)
+        if FEATURE_ANTECIPACAO and "antecipacoes" in item:
+            for ant in item["antecipacoes"]:
+                if ant.get("status") != "confirmada":
+                    continue
+                
+                origem = ant.get("origem")
+                destino = ant.get("destino")
+                valor_ant = ant.get("valor_antecipado", 0.0)
+                
+                # Remover da origem (subtrair o valor antecipado)
+                # Se for antecipação total, isso zera o mês. Se parcial, reduz.
+                if origem in MESES_TODOS:
+                    idx_origem = df[df["mesAno"] == origem].index
+                    if not idx_origem.empty:
+                        valor_atual = df.at[idx_origem[0], col_name]
+                        novo_valor = max(0.0, valor_atual - valor_ant) # Evitar negativo
+                        df.at[idx_origem[0], col_name] = novo_valor
+                
+                # Adicionar ao destino (somar o valor antecipado)
+                if destino in MESES_TODOS:
+                    idx_destino = df[df["mesAno"] == destino].index
+                    if not idx_destino.empty:
+                        valor_atual_dest = df.at[idx_destino[0], col_name]
+                        df.at[idx_destino[0], col_name] = valor_atual_dest + valor_ant
+
     # Calcular saldo total por mês
     df["total"] = 0.0
     for item in st.session_state.itens:
@@ -336,8 +368,122 @@ st.divider()
 st.header("🛠️ Gerenciar Itens")
 
 if FEATURE_ANTECIPACAO:
-    st.info("⚡ **Feature Flag Ativa:** Antecipação de Parcelas (Em desenvolvimento)")
-    # Aqui entrará o código da nova funcionalidade no futuro
+    with st.expander("⚡ Antecipar Parcelas (Feature Ativa)", expanded=False):
+        st.caption("Antecipe pagamentos futuros para meses atuais.")
+        
+        # 1. Selecionar Item (apenas Débitos)
+        opcoes_itens = [i for i in st.session_state.itens if i["tipo"] == "debito"]
+        item_sel = st.selectbox(
+            "Selecione a Despesa", 
+            opcoes_itens, 
+            format_func=lambda x: x["nome"],
+            key="ant_item"
+        )
+        
+        if item_sel:
+            # 2. Listar Parcelas Futuras (Origem)
+            # Regra: Parcela deve estar no futuro e ainda ter saldo > 0
+            # Vamos simplificar pegando meses do item que ainda não passaram
+            
+            # Identificar mês atual (simulação ou real)
+            mes_atual_str = datetime.now().strftime("%b/%y").lower()
+            # Mapa de ordem dos meses para comparação
+            def get_date_from_str(m):
+                meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+                mes, ano = m.split('/')
+                return datetime(int("20"+ano), meses.index(mes)+1, 1)
+
+            hoje = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            
+            meses_ativos = get_meses_entre(item_sel["inicio"], item_sel["fim"])
+            meses_futuros = []
+            
+            for m in meses_ativos:
+                dt_m = get_date_from_str(m)
+                if dt_m > hoje:
+                    # Verificar se já foi totalmente antecipada
+                    # (Lógica simples: listar todos futuros)
+                    meses_futuros.append(m)
+            
+            if not meses_futuros:
+                st.warning("Não há parcelas futuras para este item.")
+            else:
+                col_origem, col_destino = st.columns(2)
+                
+                origem_sel = col_origem.selectbox("Parcela a Antecipar (Origem)", meses_futuros, key="ant_origem")
+                
+                # Destino: Meses anteriores à origem
+                meses_destino = []
+                dt_origem = get_date_from_str(origem_sel)
+                
+                for m in MESES_TODOS:
+                    dt_m = get_date_from_str(m)
+                    if dt_m < dt_origem and dt_m >= get_date_from_str(item_sel["inicio"]):
+                        meses_destino.append(m)
+                
+                # Se não houver destino válido (ex: primeira parcela), permitir mês atual ou anterior
+                if not meses_destino:
+                     # Fallback: permitir qualquer mês anterior à origem dentro do range do dashboard
+                     for m in MESES_TODOS:
+                        if get_date_from_str(m) < dt_origem:
+                             meses_destino.append(m)
+                
+                destino_sel = col_destino.selectbox("Mover para (Destino)", meses_destino, index=len(meses_destino)-1 if meses_destino else 0, key="ant_destino")
+                
+                valor_antecipar = st.number_input("Valor a Antecipar (R$)", 
+                                                 value=item_sel["valor"], 
+                                                 max_value=item_sel["valor"],
+                                                 min_value=0.01,
+                                                 step=10.0,
+                                                 key="ant_valor")
+                
+                motivo = st.text_input("Motivo (Opcional)", key="ant_motivo")
+                
+                if st.button("🚀 Confirmar Antecipação", type="primary"):
+                    res = antecipacao_service.criar_antecipacao(
+                        item_id=item_sel["id"],
+                        mes_origem=origem_sel,
+                        mes_destino=destino_sel,
+                        valor=valor_antecipar,
+                        usuario="usuario_logado", # TODO: Pegar do login real se houver
+                        motivo=motivo
+                    )
+                    
+                    if res["success"]:
+                        st.success(f"✅ Antecipação realizada! {origem_sel} -> {destino_sel}")
+                        # Recarregar dados para refletir na UI
+                        dados_rec = carregar_dados()
+                        st.session_state.itens = dados_rec["itens"]
+                        st.rerun()
+                    else:
+                        st.error(f"Erro: {res['message']}")
+        
+        st.divider()
+        st.subheader("📜 Histórico de Antecipações")
+        historico = antecipacao_service.listar_antecipacoes(item_id=item_sel["id"] if item_sel else None)
+        
+        if historico:
+            for ant in historico:
+                with st.expander(f"{ant['origem']} ➔ {ant['destino']} (R$ {ant['valor_antecipado']}) - {ant['status'].upper()}", expanded=False):
+                    st.write(f"**Data:** {ant['timestamp']}")
+                    st.write(f"**Motivo:** {ant['motivo']}")
+                    
+                    if ant['status'] == 'confirmada':
+                        if st.button("Desfazer (Cancelar)", key=f"undo_{ant['id_antecipacao']}"):
+                            res_undo = antecipacao_service.cancelar_antecipacao(
+                                item_id=item_sel["id"], 
+                                id_antecipacao=ant["id_antecipacao"],
+                                usuario="usuario_logado"
+                            )
+                            if res_undo["success"]:
+                                st.success("Antecipação cancelada!")
+                                dados_rec = carregar_dados()
+                                st.session_state.itens = dados_rec["itens"]
+                                st.rerun()
+                            else:
+                                st.error(res_undo["message"])
+        else:
+            st.info("Nenhuma antecipação registrada.")
 
 # Adicionar novo item
 with st.expander("➕ Adicionar Novo Item de Despesa/Receita", expanded=False):
