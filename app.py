@@ -53,7 +53,9 @@ def verificar_senha():
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("🔓 Entrar", type="primary", use_container_width=True):
-                if hash_senha(senha_digitada) == SENHA_HASH:
+                # Usar session_state para garantir que captura o valor corretamente
+                senha = st.session_state.get("senha_input", "")
+                if hash_senha(senha) == SENHA_HASH:
                     st.session_state.autenticado = True
                     st.rerun()
                 else:
