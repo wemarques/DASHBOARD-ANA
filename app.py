@@ -7,6 +7,7 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 import hashlib
+import config_manager  # Novo gerenciador de config
 
 # Configuração da página
 st.set_page_config(
@@ -14,6 +15,10 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
+
+# Inicializar Feature Flags
+config_manager.init_flags()
+FEATURE_ANTECIPACAO = st.session_state.flags["feature_antecipacao_parcelas"]
 
 # ========================================
 # SISTEMA DE AUTENTICAÇÃO
@@ -329,6 +334,10 @@ st.divider()
 
 # Seção: Gerenciar itens
 st.header("🛠️ Gerenciar Itens")
+
+if FEATURE_ANTECIPACAO:
+    st.info("⚡ **Feature Flag Ativa:** Antecipação de Parcelas (Em desenvolvimento)")
+    # Aqui entrará o código da nova funcionalidade no futuro
 
 # Adicionar novo item
 with st.expander("➕ Adicionar Novo Item de Despesa/Receita", expanded=False):

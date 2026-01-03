@@ -6,8 +6,7 @@
       "valor": 1518.93,
       "tipo": "credito",
       "inicio": "jan/25",
-      "fim": "dez/28",
-      "antecipacoes": []
+      "fim": "dez/28"
     },
     {
       "id": "viagemNordeste",
@@ -15,8 +14,7 @@
       "valor": 206.5,
       "inicio": "set/25",
       "fim": "jun/26",
-      "tipo": "debito",
-      "antecipacoes": []
+      "tipo": "debito"
     },
     {
       "id": "geladeira",
@@ -24,8 +22,7 @@
       "valor": 152.48,
       "inicio": "jul/25",
       "fim": "jun/27",
-      "tipo": "debito",
-      "antecipacoes": []
+      "tipo": "debito"
     },
     {
       "id": "ferro",
@@ -33,8 +30,7 @@
       "valor": 219.99,
       "tipo": "credito",
       "inicio": "set/25",
-      "fim": "jun/26",
-      "antecipacoes": []
+      "fim": "jun/26"
     },
     {
       "id": "custom_0",
@@ -42,8 +38,7 @@
       "valor": 110.0,
       "tipo": "credito",
       "inicio": "jan/26",
-      "fim": "jan/26",
-      "antecipacoes": []
+      "fim": "jan/26"
     },
     {
       "id": "custom_1",
@@ -51,8 +46,7 @@
       "valor": 100.0,
       "tipo": "credito",
       "inicio": "jan/26",
-      "fim": "fev/26",
-      "antecipacoes": []
+      "fim": "fev/26"
     },
     {
       "id": "custom_2",
@@ -60,8 +54,7 @@
       "valor": 398.57,
       "tipo": "debito",
       "inicio": "jan/26",
-      "fim": "dez/26",
-      "antecipacoes": []
+      "fim": "dez/26"
     }
   ],
   "meses_quitados": [
@@ -75,6 +68,5 @@
     "ago/25",
     "set/25",
     "out/25"
-  ],
-  "versao_schema": "1.1"
+  ]
 }

@@ -1,0 +1,14 @@
+{
+  "default": {
+    "feature_antecipacao_parcelas": false
+  },
+  "staging": {
+    "feature_antecipacao_parcelas": false
+  },
+  "canary": {
+    "feature_antecipacao_parcelas": true
+  },
+  "production": {
+    "feature_antecipacao_parcelas": false
+  }
+}
