@@ -48,22 +48,48 @@ def verificar_senha():
     
     with col2:
         st.markdown("### Digite a senha para acessar")
-        senha_digitada = st.text_input("Senha", type="password", key="senha_input")
         
+        # Garantir que o session_state existe
+        if "senha_input" not in st.session_state:
+            st.session_state.senha_input = ""
+        
+        # Input de senha
+        senha_digitada = st.text_input("Senha", type="password", key="senha_input", value=st.session_state.get("senha_input", ""))
+        
+        # Debug temporário (remover após testar)
+        # st.write("Debug - Senha capturada:", "***" if senha_digitada else "(vazia)")
+        
+        # Botões FORA das colunas internas para evitar problemas
         col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            if st.button("🔓 Entrar", type="primary", use_container_width=True):
-                # Usar session_state para garantir que captura o valor corretamente
-                senha = st.session_state.get("senha_input", "")
-                if hash_senha(senha) == SENHA_HASH:
-                    st.session_state.autenticado = True
-                    st.rerun()
-                else:
-                    st.error("❌ Senha incorreta! Tente novamente.")
         
-        with col_btn2:
-            if st.button("ℹ️ Ajuda", use_container_width=True):
-                st.info("💡 **Senha padrão**: ana2025\n\nPara alterar a senha, edite o arquivo `config.py` ou entre em contato com o administrador.")
+        # Botão de Entrar
+        entrar_pressionado = col_btn1.button("🔓 Entrar", type="primary", use_container_width=True)
+        
+        # Botão de Ajuda
+        ajuda_pressionado = col_btn2.button("ℹ️ Ajuda", use_container_width=True)
+        
+        # Processar ações APÓS os botões serem renderizados
+        if entrar_pressionado:
+            # Pegar senha do session_state (mais confiável)
+            senha = st.session_state.get("senha_input", senha_digitada)
+            
+            # Se ainda estiver vazio, usar o valor direto (fallback)
+            if not senha:
+                senha = senha_digitada
+            
+            # Verificar senha
+            if senha and hash_senha(senha) == SENHA_HASH:
+                st.session_state.autenticado = True
+                st.session_state.senha_input = ""  # Limpar senha após login
+                st.rerun()
+            else:
+                st.error("❌ Senha incorreta! Tente novamente.")
+                # Limpar o campo após erro
+                if "senha_input" in st.session_state:
+                    st.session_state.senha_input = ""
+        
+        if ajuda_pressionado:
+            st.info("💡 **Senha padrão**: ana2025\n\nPara alterar a senha, edite o arquivo `app.py` ou entre em contato com o administrador.")
     
     st.markdown("---")
     st.caption("🔒 Acesso protegido por senha | Dashboard Ana © 2026")
