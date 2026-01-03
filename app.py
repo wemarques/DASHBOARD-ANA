@@ -53,18 +53,11 @@ def verificar_senha():
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
             if st.button("🔓 Entrar", type="primary", use_container_width=True):
-                hash_digitado = hash_senha(senha_digitada)
-                if hash_digitado == SENHA_HASH:
+                if hash_senha(senha_digitada) == SENHA_HASH:
                     st.session_state.autenticado = True
                     st.rerun()
                 else:
-                    # Debug temporário (remova após testar)
                     st.error("❌ Senha incorreta! Tente novamente.")
-                    with st.expander("🔍 Debug (remover após testar)", expanded=False):
-                        st.write(f"Hash digitado: `{hash_digitado}`")
-                        st.write(f"Hash esperado: `{SENHA_HASH}`")
-                        st.write(f"Senha digitada: `{senha_digitada}`")
-                        st.write(f"Corresponde: {hash_digitado == SENHA_HASH}")
         
         with col_btn2:
             if st.button("ℹ️ Ajuda", use_container_width=True):
