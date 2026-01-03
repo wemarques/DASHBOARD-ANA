@@ -30,6 +30,30 @@
       "valor": 219.99,
       "tipo": "credito",
       "inicio": "set/25",
+      "fim": "jun/26"
+    },
+    {
+      "id": "custom_0",
+      "nome": "Desodorante",
+      "valor": 110.0,
+      "tipo": "credito",
+      "inicio": "jan/26",
+      "fim": "jan/26"
+    },
+    {
+      "id": "custom_1",
+      "nome": "Capa Tábua de Passar Roupa",
+      "valor": 100.0,
+      "tipo": "credito",
+      "inicio": "jan/26",
+      "fim": "fev/26"
+    },
+    {
+      "id": "custom_2",
+      "nome": "Bancorbras Vila Galé",
+      "valor": 398.57,
+      "tipo": "debito",
+      "inicio": "jan/26",
       "fim": "dez/26"
     }
   ],
