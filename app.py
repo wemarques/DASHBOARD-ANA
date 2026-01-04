@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import hashlib
 import config_manager  # Novo gerenciador de config
 from backend_antecipacao import AntecipacaoService  # Backend Antecipação
+from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS
 
 # Configuração da página
 st.set_page_config(
@@ -16,6 +17,9 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
+
+# Aplicar estilos customizados
+aplicar_estilos_customizados()
 
 # Inicializar Feature Flags
 config_manager.init_flags()
@@ -49,7 +53,7 @@ def verificar_senha():
     st.markdown("""
     <div style='text-align: center; padding: 50px;'>
         <h1>🔐 Dashboard Ana</h1>
-        <p style='color: #666;'>Sistema de Gestão Financeira Pessoal</p>
+        <p style='color: var(--muted-foreground);'>Sistema de Gestão Financeira Pessoal</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -294,7 +298,7 @@ def exibir_quadro_resumo_gerencial(df):
             x="mesAno", 
             y="total",
             color="cor",
-            color_discrete_map={"Positivo": "#10b981", "Negativo": "#ef4444"},
+            color_discrete_map={"Positivo": CORES_GRAFICOS['positivo'], "Negativo": CORES_GRAFICOS['negativo']},
             labels={"mesAno": "Mês/Ano", "total": "Saldo (R$)"},
             title="Saldo Mensal (2025-2028)"
         )
@@ -603,11 +607,6 @@ for _, row in df_exibir.iterrows():
     quitado = mes in st.session_state.meses_quitados
     saldo = row["total"]
     
-    # Formatação do saldo
-    def fmt_brl_valor(x):
-        s = f"{abs(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        return f"{'+' if x >= 0 else '-'} R$ {s}"
-    
     # Cabeçalho do card
     titulo = f"{'✅' if quitado else '📅'} {mes}"
     if quitado:
@@ -651,8 +650,7 @@ for _, row in df_exibir.iterrows():
             st.write("_Nenhum item neste mês._")
         
         # Saldo final
-        cor = "green" if saldo >= 0 else "red"
-        st.markdown(f"**Saldo:** <span style='color:{cor}'>{fmt_brl_valor(saldo)}</span>", unsafe_allow_html=True)
+        st.markdown(f"**Saldo:** {formatar_valor_financeiro(saldo)}", unsafe_allow_html=True)
 
 # Rodapé
 st.divider()

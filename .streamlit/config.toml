@@ -1,0 +1,17 @@
+[theme]
+# Cores primárias baseadas em OKLCH
+primaryColor = "#3333CC"        # Azul escuro profissional
+backgroundColor = "#FCFCFE"     # Branco levemente azulado
+secondaryBackgroundColor = "#F5F5F7"  # Cinza muito claro
+textColor = "#1A1A1F"           # Preto azulado
+
+# Fonte
+font = "sans serif"
+
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
