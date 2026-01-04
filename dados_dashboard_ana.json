@@ -7,7 +7,20 @@
       "tipo": "credito",
       "inicio": "jan/25",
       "fim": "dez/28",
-      "antecipacoes": []
+      "antecipacoes": [],
+      "contrato": {
+        "inicio_original": "jan/25",
+        "fim_original": "dez/28",
+        "total_parcelas": 0,
+        "valor_parcela": 1518.93
+      },
+      "cronograma": {
+        "inicio_atual": "dez/28",
+        "fim_atual": "dez/28",
+        "parcelas_pagas": 0,
+        "parcelas_restantes": 0,
+        "mapeamento": {}
+      }
     },
     {
       "id": "viagemNordeste",
@@ -16,7 +29,71 @@
       "inicio": "set/25",
       "fim": "jun/26",
       "tipo": "debito",
-      "antecipacoes": []
+      "antecipacoes": [],
+      "contrato": {
+        "inicio_original": "set/25",
+        "fim_original": "jun/26",
+        "total_parcelas": 10,
+        "valor_parcela": 206.5
+      },
+      "cronograma": {
+        "inicio_atual": "set/25",
+        "fim_atual": "jun/26",
+        "parcelas_pagas": 0,
+        "parcelas_restantes": 10,
+        "mapeamento": {
+          "set/25": {
+            "numero": 1,
+            "vencimento_atual": "set/25",
+            "status": "pendente"
+          },
+          "out/25": {
+            "numero": 2,
+            "vencimento_atual": "out/25",
+            "status": "pendente"
+          },
+          "nov/25": {
+            "numero": 3,
+            "vencimento_atual": "nov/25",
+            "status": "pendente"
+          },
+          "dez/25": {
+            "numero": 4,
+            "vencimento_atual": "dez/25",
+            "status": "pendente"
+          },
+          "jan/26": {
+            "numero": 5,
+            "vencimento_atual": "jan/26",
+            "status": "pendente"
+          },
+          "fev/26": {
+            "numero": 6,
+            "vencimento_atual": "fev/26",
+            "status": "pendente"
+          },
+          "mar/26": {
+            "numero": 7,
+            "vencimento_atual": "mar/26",
+            "status": "pendente"
+          },
+          "abr/26": {
+            "numero": 8,
+            "vencimento_atual": "abr/26",
+            "status": "pendente"
+          },
+          "mai/26": {
+            "numero": 9,
+            "vencimento_atual": "mai/26",
+            "status": "pendente"
+          },
+          "jun/26": {
+            "numero": 10,
+            "vencimento_atual": "jun/26",
+            "status": "pendente"
+          }
+        }
+      }
     },
     {
       "id": "geladeira",
@@ -25,7 +102,141 @@
       "inicio": "jul/25",
       "fim": "jun/27",
       "tipo": "debito",
-      "antecipacoes": []
+      "antecipacoes": [],
+      "contrato": {
+        "inicio_original": "jul/25",
+        "fim_original": "jun/27",
+        "total_parcelas": 24,
+        "valor_parcela": 152.48
+      },
+      "cronograma": {
+        "inicio_atual": "jul/25",
+        "fim_atual": "jun/27",
+        "parcelas_pagas": 0,
+        "parcelas_restantes": 24,
+        "mapeamento": {
+          "jul/25": {
+            "numero": 1,
+            "vencimento_atual": "jul/25",
+            "status": "pendente"
+          },
+          "ago/25": {
+            "numero": 2,
+            "vencimento_atual": "ago/25",
+            "status": "pendente"
+          },
+          "set/25": {
+            "numero": 3,
+            "vencimento_atual": "set/25",
+            "status": "pendente"
+          },
+          "out/25": {
+            "numero": 4,
+            "vencimento_atual": "out/25",
+            "status": "pendente"
+          },
+          "nov/25": {
+            "numero": 5,
+            "vencimento_atual": "nov/25",
+            "status": "pendente"
+          },
+          "dez/25": {
+            "numero": 6,
+            "vencimento_atual": "dez/25",
+            "status": "pendente"
+          },
+          "jan/26": {
+            "numero": 7,
+            "vencimento_atual": "jan/26",
+            "status": "pendente"
+          },
+          "fev/26": {
+            "numero": 8,
+            "vencimento_atual": "fev/26",
+            "status": "pendente"
+          },
+          "mar/26": {
+            "numero": 9,
+            "vencimento_atual": "mar/26",
+            "status": "pendente"
+          },
+          "abr/26": {
+            "numero": 10,
+            "vencimento_atual": "abr/26",
+            "status": "pendente"
+          },
+          "mai/26": {
+            "numero": 11,
+            "vencimento_atual": "mai/26",
+            "status": "pendente"
+          },
+          "jun/26": {
+            "numero": 12,
+            "vencimento_atual": "jun/26",
+            "status": "pendente"
+          },
+          "jul/26": {
+            "numero": 13,
+            "vencimento_atual": "jul/26",
+            "status": "pendente"
+          },
+          "ago/26": {
+            "numero": 14,
+            "vencimento_atual": "ago/26",
+            "status": "pendente"
+          },
+          "set/26": {
+            "numero": 15,
+            "vencimento_atual": "set/26",
+            "status": "pendente"
+          },
+          "out/26": {
+            "numero": 16,
+            "vencimento_atual": "out/26",
+            "status": "pendente"
+          },
+          "nov/26": {
+            "numero": 17,
+            "vencimento_atual": "nov/26",
+            "status": "pendente"
+          },
+          "dez/26": {
+            "numero": 18,
+            "vencimento_atual": "dez/26",
+            "status": "pendente"
+          },
+          "jan/27": {
+            "numero": 19,
+            "vencimento_atual": "jan/27",
+            "status": "pendente"
+          },
+          "fev/27": {
+            "numero": 20,
+            "vencimento_atual": "fev/27",
+            "status": "pendente"
+          },
+          "mar/27": {
+            "numero": 21,
+            "vencimento_atual": "mar/27",
+            "status": "pendente"
+          },
+          "abr/27": {
+            "numero": 22,
+            "vencimento_atual": "abr/27",
+            "status": "pendente"
+          },
+          "mai/27": {
+            "numero": 23,
+            "vencimento_atual": "mai/27",
+            "status": "pendente"
+          },
+          "jun/27": {
+            "numero": 24,
+            "vencimento_atual": "jun/27",
+            "status": "pendente"
+          }
+        }
+      }
     },
     {
       "id": "ferro",
@@ -34,7 +245,71 @@
       "tipo": "credito",
       "inicio": "set/25",
       "fim": "jun/26",
-      "antecipacoes": []
+      "antecipacoes": [],
+      "contrato": {
+        "inicio_original": "set/25",
+        "fim_original": "jun/26",
+        "total_parcelas": 10,
+        "valor_parcela": 219.99
+      },
+      "cronograma": {
+        "inicio_atual": "set/25",
+        "fim_atual": "jun/26",
+        "parcelas_pagas": 0,
+        "parcelas_restantes": 10,
+        "mapeamento": {
+          "set/25": {
+            "numero": 1,
+            "vencimento_atual": "set/25",
+            "status": "pendente"
+          },
+          "out/25": {
+            "numero": 2,
+            "vencimento_atual": "out/25",
+            "status": "pendente"
+          },
+          "nov/25": {
+            "numero": 3,
+            "vencimento_atual": "nov/25",
+            "status": "pendente"
+          },
+          "dez/25": {
+            "numero": 4,
+            "vencimento_atual": "dez/25",
+            "status": "pendente"
+          },
+          "jan/26": {
+            "numero": 5,
+            "vencimento_atual": "jan/26",
+            "status": "pendente"
+          },
+          "fev/26": {
+            "numero": 6,
+            "vencimento_atual": "fev/26",
+            "status": "pendente"
+          },
+          "mar/26": {
+            "numero": 7,
+            "vencimento_atual": "mar/26",
+            "status": "pendente"
+          },
+          "abr/26": {
+            "numero": 8,
+            "vencimento_atual": "abr/26",
+            "status": "pendente"
+          },
+          "mai/26": {
+            "numero": 9,
+            "vencimento_atual": "mai/26",
+            "status": "pendente"
+          },
+          "jun/26": {
+            "numero": 10,
+            "vencimento_atual": "jun/26",
+            "status": "pendente"
+          }
+        }
+      }
     },
     {
       "id": "custom_0",
@@ -43,7 +318,26 @@
       "tipo": "credito",
       "inicio": "jan/26",
       "fim": "jan/26",
-      "antecipacoes": []
+      "antecipacoes": [],
+      "contrato": {
+        "inicio_original": "jan/26",
+        "fim_original": "jan/26",
+        "total_parcelas": 1,
+        "valor_parcela": 110.0
+      },
+      "cronograma": {
+        "inicio_atual": "jan/26",
+        "fim_atual": "jan/26",
+        "parcelas_pagas": 0,
+        "parcelas_restantes": 1,
+        "mapeamento": {
+          "jan/26": {
+            "numero": 1,
+            "vencimento_atual": "jan/26",
+            "status": "pendente"
+          }
+        }
+      }
     },
     {
       "id": "custom_1",
@@ -52,7 +346,31 @@
       "tipo": "credito",
       "inicio": "jan/26",
       "fim": "fev/26",
-      "antecipacoes": []
+      "antecipacoes": [],
+      "contrato": {
+        "inicio_original": "jan/26",
+        "fim_original": "fev/26",
+        "total_parcelas": 2,
+        "valor_parcela": 100.0
+      },
+      "cronograma": {
+        "inicio_atual": "jan/26",
+        "fim_atual": "fev/26",
+        "parcelas_pagas": 0,
+        "parcelas_restantes": 2,
+        "mapeamento": {
+          "jan/26": {
+            "numero": 1,
+            "vencimento_atual": "jan/26",
+            "status": "pendente"
+          },
+          "fev/26": {
+            "numero": 2,
+            "vencimento_atual": "fev/26",
+            "status": "pendente"
+          }
+        }
+      }
     },
     {
       "id": "custom_2",
@@ -61,7 +379,81 @@
       "tipo": "debito",
       "inicio": "jan/26",
       "fim": "dez/26",
-      "antecipacoes": []
+      "antecipacoes": [],
+      "contrato": {
+        "inicio_original": "jan/26",
+        "fim_original": "dez/26",
+        "total_parcelas": 12,
+        "valor_parcela": 398.57
+      },
+      "cronograma": {
+        "inicio_atual": "jan/26",
+        "fim_atual": "dez/26",
+        "parcelas_pagas": 0,
+        "parcelas_restantes": 12,
+        "mapeamento": {
+          "jan/26": {
+            "numero": 1,
+            "vencimento_atual": "jan/26",
+            "status": "pendente"
+          },
+          "fev/26": {
+            "numero": 2,
+            "vencimento_atual": "fev/26",
+            "status": "pendente"
+          },
+          "mar/26": {
+            "numero": 3,
+            "vencimento_atual": "mar/26",
+            "status": "pendente"
+          },
+          "abr/26": {
+            "numero": 4,
+            "vencimento_atual": "abr/26",
+            "status": "pendente"
+          },
+          "mai/26": {
+            "numero": 5,
+            "vencimento_atual": "mai/26",
+            "status": "pendente"
+          },
+          "jun/26": {
+            "numero": 6,
+            "vencimento_atual": "jun/26",
+            "status": "pendente"
+          },
+          "jul/26": {
+            "numero": 7,
+            "vencimento_atual": "jul/26",
+            "status": "pendente"
+          },
+          "ago/26": {
+            "numero": 8,
+            "vencimento_atual": "ago/26",
+            "status": "pendente"
+          },
+          "set/26": {
+            "numero": 9,
+            "vencimento_atual": "set/26",
+            "status": "pendente"
+          },
+          "out/26": {
+            "numero": 10,
+            "vencimento_atual": "out/26",
+            "status": "pendente"
+          },
+          "nov/26": {
+            "numero": 11,
+            "vencimento_atual": "nov/26",
+            "status": "pendente"
+          },
+          "dez/26": {
+            "numero": 12,
+            "vencimento_atual": "dez/26",
+            "status": "pendente"
+          }
+        }
+      }
     }
   ],
   "meses_quitados": [

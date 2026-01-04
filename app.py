@@ -146,6 +146,103 @@ def get_meses_entre(inicio, fim):
     except ValueError:
         return []
 
+def calcular_cronograma_atual(item):
+    """
+    Calcula o cronograma atual baseado nas antecipações confirmadas.
+    
+    Retorna:
+        dict: {
+            "inicio_atual": str,
+            "fim_atual": str,
+            "parcelas_pagas": int,
+            "parcelas_restantes": int,
+            "mapeamento": dict
+        }
+    """
+    contrato = item.get("contrato", {})
+    if not contrato:
+        # Fallback: usar dados antigos
+        return {
+            "inicio_atual": item["inicio"],
+            "fim_atual": item["fim"],
+            "parcelas_pagas": 0,
+            "parcelas_restantes": len(get_meses_entre(item["inicio"], item["fim"])),
+            "mapeamento": {}
+        }
+    
+    inicio_original = contrato["inicio_original"]
+    fim_original = contrato["fim_original"]
+    total_parcelas = contrato["total_parcelas"]
+    
+    # Obter todas as parcelas originais
+    meses_originais = get_meses_entre(inicio_original, fim_original)
+    
+    # Obter antecipações confirmadas
+    antecipacoes_confirmadas = [
+        ant for ant in item.get("antecipacoes", [])
+        if ant.get("status") == "confirmada"
+    ]
+    
+    # Criar mapeamento: parcela_original → vencimento_atual
+    mapeamento = {}
+    antecipacoes_anteriores = 0
+    
+    for i, mes_original in enumerate(meses_originais):
+        numero_parcela = i + 1
+        
+        # Verificar se esta parcela foi antecipada
+        antecipacao = next(
+            (a for a in antecipacoes_confirmadas if a["origem"] == mes_original),
+            None
+        )
+        
+        if antecipacao:
+            # Parcela antecipada
+            mapeamento[mes_original] = {
+                "numero": numero_parcela,
+                "vencimento_atual": antecipacao["destino"],
+                "status": "antecipada"
+            }
+            antecipacoes_anteriores += 1
+        else:
+            # Parcela não antecipada: deslocar para trás
+            novo_indice = i - antecipacoes_anteriores
+            mes_vencimento = meses_originais[novo_indice]
+            
+            mapeamento[mes_original] = {
+                "numero": numero_parcela,
+                "vencimento_atual": mes_vencimento,
+                "status": "pendente"
+            }
+    
+    # Calcular início e fim atuais
+    parcelas_pendentes = [
+        v for v in mapeamento.values()
+        if v["status"] == "pendente"
+    ]
+    
+    if parcelas_pendentes:
+        vencimentos_pendentes = [p["vencimento_atual"] for p in parcelas_pendentes]
+        # Ordenar cronologicamente usando MESES_TODOS
+        vencimentos_ordenados = sorted(vencimentos_pendentes, key=lambda x: MESES_TODOS.index(x) if x in MESES_TODOS else 999)
+        inicio_atual = vencimentos_ordenados[0]
+        fim_atual = vencimentos_ordenados[-1]
+    else:
+        # Todas as parcelas foram antecipadas
+        inicio_atual = fim_original
+        fim_atual = fim_original
+    
+    parcelas_pagas = len([v for v in mapeamento.values() if v["status"] == "antecipada"])
+    parcelas_restantes = len([v for v in mapeamento.values() if v["status"] == "pendente"])
+    
+    return {
+        "inicio_atual": inicio_atual,
+        "fim_atual": fim_atual,
+        "parcelas_pagas": parcelas_pagas,
+        "parcelas_restantes": parcelas_restantes,
+        "mapeamento": mapeamento
+    }
+
 def calcular_numero_parcela(mes, inicio, fim):
     """
     Calcula o número da parcela de um mês dentro do range inicio-fim.
@@ -186,6 +283,93 @@ def listar_antecipacoes_por_mes(mes_destino):
                 })
     
     return antecipacoes_mes
+
+def mostrar_detalhes_contrato(item):
+    """Exibe detalhes completos do contrato e cronograma"""
+    contrato = item.get("contrato", {})
+    cronograma = item.get("cronograma", {})
+    
+    if not contrato or not cronograma:
+        st.warning("🚧 Dados do contrato não disponíveis. Execute a migração de dados.")
+        return
+    
+    st.markdown("---")
+    st.markdown("### 📋 Detalhes do Contrato")
+    
+    # Contrato Original
+    st.markdown("**CONTRATO ORIGINAL**")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Período", f"{contrato['inicio_original']} a {contrato['fim_original']}")
+        st.metric("Total de Parcelas", contrato['total_parcelas'])
+    with col2:
+        st.metric("Valor por Parcela", f"R$ {contrato['valor_parcela']:,.2f}")
+        valor_total = contrato['valor_parcela'] * contrato['total_parcelas']
+        st.metric("Valor Total", f"R$ {valor_total:,.2f}")
+    
+    st.markdown("---")
+    
+    # Cronograma Atual
+    st.markdown("**CRONOGRAMA ATUAL (após antecipações)**")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Período", f"{cronograma['inicio_atual']} a {cronograma['fim_atual']}")
+        st.metric("Parcelas Pagas", f"{cronograma['parcelas_pagas']}/{contrato['total_parcelas']}")
+    with col2:
+        valor_pago = cronograma['parcelas_pagas'] * contrato['valor_parcela']
+        st.metric("Valor Pago", f"R$ {valor_pago:,.2f}")
+        valor_restante = cronograma['parcelas_restantes'] * contrato['valor_parcela']
+        st.metric("Valor Restante", f"R$ {valor_restante:,.2f}")
+    
+    st.markdown("---")
+    
+    # Mapeamento de Parcelas
+    st.markdown("**MAPEAMENTO DE PARCELAS**")
+    
+    mapeamento = cronograma.get("mapeamento", {})
+    if mapeamento:
+        for mes_original, info in mapeamento.items():
+            numero = info["numero"]
+            vencimento = info["vencimento_atual"]
+            status = info["status"]
+            
+            if status == "antecipada":
+                st.markdown(
+                    f"• Parcela {numero}/{contrato['total_parcelas']} "
+                    f"({mes_original}) → **{vencimento}** ✅ *Antecipada*"
+                )
+            else:
+                st.markdown(
+                    f"• Parcela {numero}/{contrato['total_parcelas']} "
+                    f"({mes_original}) → **{vencimento}** ⏳ *Pendente*"
+                )
+
+def migrar_dados_para_novo_formato():
+    """
+    Migra dados existentes para incluir campos 'contrato' e 'cronograma'
+    """
+    dados = carregar_dados()
+    
+    for item in dados["itens"]:
+        # Se já tem 'contrato', pular
+        if "contrato" in item:
+            continue
+        
+        # Criar contrato original baseado nos dados atuais
+        meses_ativos = get_meses_entre(item["inicio"], item["fim"])
+        
+        item["contrato"] = {
+            "inicio_original": item["inicio"],
+            "fim_original": item["fim"],
+            "total_parcelas": len(meses_ativos),
+            "valor_parcela": item["valor"]
+        }
+        
+        # Calcular cronograma atual
+        item["cronograma"] = calcular_cronograma_atual(item)
+    
+    salvar_dados(dados["itens"], dados["meses_quitados"])
+    return len(dados["itens"])
 
 def salvar_dados(itens_todos, meses_quit):
     """Salva dados no disco (JSON)"""
@@ -566,9 +750,18 @@ if FEATURE_ANTECIPACAO:
                             if erros:
                                 st.error("❌ Erros encontrados:\n" + "\n".join(erros))
                             
-                            # Recarregar dados
+                            # Recarregar dados e recalcular cronograma
                             if sucessos > 0:
                                 dados_rec = carregar_dados()
+                                
+                                # Recalcular cronograma do item (sem encurtar)
+                                for item in dados_rec["itens"]:
+                                    if item["id"] == item_sel["id"]:
+                                        if "contrato" in item:
+                                            item["cronograma"] = calcular_cronograma_atual(item)
+                                        break
+                                
+                                salvar_dados(dados_rec["itens"], dados_rec["meses_quitados"])
                                 st.session_state.itens = dados_rec["itens"]
                                 st.rerun()
         
@@ -693,7 +886,39 @@ if st.session_state.itens:
             
             with col1:
                 st.write(f"**Tipo:** {'Crédito (Receita)' if item['tipo'] == 'credito' else 'Débito (Despesa)'}")
-                st.write(f"**Período:** {item['inicio']} até {item['fim']}")
+                
+                # Exibir período com formato "atual (original)"
+                contrato = item.get("contrato", {})
+                cronograma = item.get("cronograma", {})
+                
+                if contrato and cronograma:
+                    inicio_original = contrato["inicio_original"]
+                    fim_original = contrato["fim_original"]
+                    inicio_atual = cronograma["inicio_atual"]
+                    fim_atual = cronograma["fim_atual"]
+                    parcelas_pagas = cronograma["parcelas_pagas"]
+                    parcelas_restantes = cronograma["parcelas_restantes"]
+                    
+                    # Verificar se houve antecipações
+                    if parcelas_pagas > 0:
+                        # Formato: jan/26 (mar/26) até out/26 (dez/26)
+                        periodo_texto = (
+                            f"{inicio_atual} ({inicio_original}) até "
+                            f"{fim_atual} ({fim_original})"
+                        )
+                        st.write(f"**Período:** {periodo_texto}")
+                        st.caption(
+                            f"⚡ {parcelas_pagas} parcela(s) antecipada(s) | "
+                            f"{parcelas_restantes} restante(s) de {contrato['total_parcelas']}"
+                        )
+                    else:
+                        # Sem antecipações: exibir normal
+                        st.write(f"**Período:** {inicio_original} até {fim_original}")
+                        st.caption(f"📋 {parcelas_restantes} parcela(s) de {contrato['total_parcelas']}")
+                else:
+                    # Fallback para formato antigo
+                    st.write(f"**Período:** {item['inicio']} até {item['fim']}")
+                
                 st.write(f"**Valor Mensal:** R$ {item['valor']:.2f}")
             
             with col2:
@@ -706,6 +931,11 @@ if st.session_state.itens:
                     salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
                     st.success(f"✅ Item '{item['nome']}' excluído com sucesso!")
                     st.rerun()
+            
+            # Botão para ver detalhes do contrato
+            if item.get("contrato") and item.get("cronograma"):
+                if st.button("📋 Ver Detalhes do Contrato", key=f"detalhes_{item['id']}"):
+                    mostrar_detalhes_contrato(item)
 else:
     st.info("Nenhum item cadastrado. Adicione um novo item acima.")
 
@@ -792,11 +1022,28 @@ for _, row in df_exibir.iterrows():
             # Contador de prazo (exceto Plano de Saúde)
             contador = ""
             if item["nome"] != "Plano de Saúde":
-                meses_ativos = get_meses_entre(item["inicio"], item["fim"])
-                if mes in meses_ativos:
-                    prest_atual = meses_ativos.index(mes) + 1
-                    total_prest = len(meses_ativos)
-                    contador = f" (PRAZO {prest_atual}/{total_prest})"
+                # Usar cronograma se disponível
+                cronograma = item.get("cronograma", {})
+                mapeamento = cronograma.get("mapeamento", {})
+                
+                # Encontrar parcela original correspondente a este mês
+                parcela_info = None
+                for mes_original, info in mapeamento.items():
+                    if info["vencimento_atual"] == mes:
+                        parcela_info = info
+                        break
+                
+                if parcela_info:
+                    numero = parcela_info["numero"]
+                    total = item["contrato"]["total_parcelas"]
+                    contador = f" (Parcela {numero}/{total})"
+                else:
+                    # Fallback para cálculo antigo
+                    meses_ativos = get_meses_entre(item["inicio"], item["fim"])
+                    if mes in meses_ativos:
+                        prest_atual = meses_ativos.index(mes) + 1
+                        total_prest = len(meses_ativos)
+                        contador = f" (PRAZO {prest_atual}/{total_prest})"
             
             # Formatação do valor
             sinal = "+" if item["tipo"] == "credito" else "-"
