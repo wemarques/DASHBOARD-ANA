@@ -151,7 +151,7 @@ class AntecipacaoService:
         
         return all_antecipacoes
 
-    def criar_antecipacao(self, item_id, mes_origem, mes_destino, valor, usuario, motivo=None):
+    def criar_antecipacao(self, item_id, mes_origem, mes_destino, valor, usuario, motivo=None, mes_original_parcela=None):
         # Validações Server-Side
         if valor <= 0:
             return {"success": False, "message": "Valor deve ser positivo."}
@@ -166,13 +166,18 @@ class AntecipacaoService:
         if not item_found:
             return {"success": False, "message": "Item não encontrado."}
 
-        # Validação: verificar se a parcela já foi antecipada
-        # Cada parcela só pode ser antecipada UMA VEZ
+        # Validação: verificar se a PARCELA ORIGINAL já foi antecipada
+        # Usa mes_original_parcela se fornecido, senão usa mes_origem (compatibilidade)
+        mes_para_validar = mes_original_parcela if mes_original_parcela else mes_origem
+        
         for ant in item_found.get("antecipacoes", []):
-            if ant["origem"] == mes_origem and ant["status"] == "confirmada":
+            # Verificar se a mesma parcela original já foi antecipada
+            ant_mes_original = ant.get("mes_original_parcela", ant["origem"])
+            
+            if ant_mes_original == mes_para_validar and ant["status"] == "confirmada":
                 return {
                     "success": False, 
-                    "message": f"A parcela {mes_origem} já foi antecipada para {ant['destino']}. Cancele a antecipação anterior se desejar reagendar."
+                    "message": f"A parcela original {mes_para_validar} já foi antecipada. Cancele a antecipação anterior se desejar reagendar."
                 }
 
         # Permitir antecipar para qualquer mês (inclusive posteriores)
@@ -182,8 +187,9 @@ class AntecipacaoService:
         nova_antecipacao = {
             "id_antecipacao": str(uuid.uuid4()),
             "id_parcela": f"{item_id}_{mes_origem}", # ID lógico da parcela
-            "origem": mes_origem,
+            "origem": mes_origem,  # Mês de vencimento atual
             "destino": mes_destino,
+            "mes_original_parcela": mes_original_parcela or mes_origem,  # Mês original da parcela no contrato
             "valor_antecipado": float(valor),
             "usuario": usuario,
             "timestamp": datetime.now().isoformat(),

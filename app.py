@@ -719,13 +719,29 @@ if FEATURE_ANTECIPACAO:
                             
                             # Processar cada antecipação
                             for origem in origem_sels:
+                                # Calcular mês original da parcela usando cronograma
+                                cronograma = item_sel.get("cronograma", {})
+                                mapeamento = cronograma.get("mapeamento", {})
+                                
+                                # Buscar mês original no mapeamento
+                                mes_original = None
+                                for mes_orig, mes_venc in mapeamento.items():
+                                    if mes_venc == origem:
+                                        mes_original = mes_orig
+                                        break
+                                
+                                # Se não encontrou no mapeamento, usar origem (compatibilidade)
+                                if not mes_original:
+                                    mes_original = origem
+                                
                                 res = antecipacao_service.criar_antecipacao(
                                     item_id=item_sel["id"],
                                     mes_origem=origem,
                                     mes_destino=destino_sel,
                                     valor=item_sel["valor"],
                                     usuario="usuario_logado",
-                                    motivo=motivo
+                                    motivo=motivo,
+                                    mes_original_parcela=mes_original
                                 )
                                 
                                 if res["success"]:
