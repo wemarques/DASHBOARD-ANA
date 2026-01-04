@@ -95,8 +95,12 @@ class AntecipacaoService:
             dt_origem = parse_mes(mes_origem)
             dt_destino = parse_mes(mes_destino)
 
-            if dt_destino >= dt_origem:
-                return {"success": False, "message": "Mês de destino deve ser anterior ao mês de origem."}
+            # Nova regra: Destino pode ser igual à origem (se quiser pagar no mesmo mês mas marcar diferente)
+            # Mas o principal uso é antecipar (destino < origem).
+            # Se destino > origem, é postergação (ainda não suportado, mas vamos bloquear).
+            
+            if dt_destino > dt_origem:
+                return {"success": False, "message": "Mês de destino deve ser anterior ou igual ao mês de origem."}
             
         except ValueError:
              return {"success": False, "message": "Formato de mês inválido (use mmm/yy)."}
