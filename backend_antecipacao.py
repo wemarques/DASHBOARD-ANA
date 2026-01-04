@@ -166,15 +166,14 @@ class AntecipacaoService:
         if not item_found:
             return {"success": False, "message": "Item não encontrado."}
 
-        # Permitir múltiplas antecipações da mesma origem (para casos de antecipação parcial)
-        # Validação: verificar se o valor total antecipado não excede o valor da parcela
-        valor_ja_antecipado = 0
+        # Validação: verificar se a parcela já foi antecipada
+        # Cada parcela só pode ser antecipada UMA VEZ
         for ant in item_found.get("antecipacoes", []):
-            if ant["origem"] == mes_origem and ant["status"] != "cancelada":
-                valor_ja_antecipado += ant["valor_antecipado"]
-
-        if valor_ja_antecipado + valor > item_found["valor"]:
-            return {"success": False, "message": f"Valor total antecipado (R$ {valor_ja_antecipado + valor:.2f}) excede o valor da parcela (R$ {item_found['valor']:.2f})."}
+            if ant["origem"] == mes_origem and ant["status"] == "confirmada":
+                return {
+                    "success": False, 
+                    "message": f"A parcela {mes_origem} já foi antecipada para {ant['destino']}. Cancele a antecipação anterior se desejar reagendar."
+                }
 
         # Permitir antecipar para qualquer mês (inclusive posteriores)
         # A validação de lógica de negócio será feita no frontend
