@@ -299,3 +299,5 @@ CORES_GRAFICOS = {
     'acento': '#6B6B99'     # Azul neutro
 }
 
+
+

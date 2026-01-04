@@ -11,6 +11,18 @@ logger = logging.getLogger(__name__)
 DATA_FILE = "dados_dashboard_ana.json"
 AUDIT_LOG_FILE = "audit_log.json"
 
+# Lista completa de meses (jan/25 a dez/28)
+MESES_TODOS = [
+    "jan/25", "fev/25", "mar/25", "abr/25", "mai/25", "jun/25",
+    "jul/25", "ago/25", "set/25", "out/25", "nov/25", "dez/25",
+    "jan/26", "fev/26", "mar/26", "abr/26", "mai/26", "jun/26",
+    "jul/26", "ago/26", "set/26", "out/26", "nov/26", "dez/26",
+    "jan/27", "fev/27", "mar/27", "abr/27", "mai/27", "jun/27",
+    "jul/27", "ago/27", "set/27", "out/27", "nov/27", "dez/27",
+    "jan/28", "fev/28", "mar/28", "abr/28", "mai/28", "jun/28",
+    "jul/28", "ago/28", "set/28", "out/28", "nov/28", "dez/28"
+]
+
 class AntecipacaoService:
     def __init__(self, data_file=DATA_FILE):
         self.data_file = data_file
@@ -42,6 +54,82 @@ class AntecipacaoService:
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:
             logger.error(f"Falha ao gravar auditoria: {e}")
+
+    def encurtar_fluxo_item(self, item_id):
+        """
+        Encurta o fluxo de um item baseado nas antecipações confirmadas.
+        
+        Para cada antecipação confirmada, o fim do item é encurtado em 1 mês.
+        
+        Args:
+            item_id: ID do item a ser encurtado
+        
+        Returns:
+            dict: {"success": bool, "novo_fim": str, "meses_encurtados": int}
+        """
+        data = self._load_data()
+        
+        if not data:
+            return {"success": False, "message": "Dados não encontrados"}
+        
+        # Encontrar item
+        item_found = None
+        for item in data.get("itens", []):
+            if item["id"] == item_id:
+                item_found = item
+                break
+        
+        if not item_found:
+            return {"success": False, "message": "Item não encontrado"}
+        
+        # Contar antecipações confirmadas
+        antecipacoes_confirmadas = [
+            ant for ant in item_found.get("antecipacoes", [])
+            if ant.get("status") == "confirmada"
+        ]
+        
+        if not antecipacoes_confirmadas:
+            return {"success": False, "message": "Nenhuma antecipação confirmada"}
+        
+        # Calcular novo fim
+        inicio = item_found["inicio"]
+        fim_atual = item_found["fim"]
+        
+        try:
+            idx_inicio = MESES_TODOS.index(inicio)
+            idx_fim = MESES_TODOS.index(fim_atual)
+        except ValueError:
+            return {"success": False, "message": "Meses inválidos"}
+        
+        # Encurtar: subtrair número de antecipações
+        meses_encurtados = len(antecipacoes_confirmadas)
+        novo_idx_fim = idx_fim - meses_encurtados
+        
+        # Validar que não fica menor que o início
+        if novo_idx_fim < idx_inicio:
+            novo_idx_fim = idx_inicio
+        
+        novo_fim = MESES_TODOS[novo_idx_fim]
+        
+        # Atualizar item
+        fim_anterior = item_found["fim"]
+        item_found["fim"] = novo_fim
+        
+        # Salvar
+        self._save_data(data)
+        self._log_audit("ENCURTAR_FLUXO", "sistema", {
+            "item_id": item_id,
+            "fim_anterior": fim_anterior,
+            "novo_fim": novo_fim,
+            "meses_encurtados": meses_encurtados
+        })
+        
+        return {
+            "success": True,
+            "novo_fim": novo_fim,
+            "meses_encurtados": meses_encurtados,
+            "fim_anterior": fim_anterior
+        }
 
     def listar_antecipacoes(self, item_id=None, status=None):
         data = self._load_data()
@@ -78,32 +166,18 @@ class AntecipacaoService:
         if not item_found:
             return {"success": False, "message": "Item não encontrado."}
 
-        # Validar se já existe antecipação para esta origem
+        # Permitir múltiplas antecipações da mesma origem (para casos de antecipação parcial)
+        # Validação: verificar se o valor total antecipado não excede o valor da parcela
+        valor_ja_antecipado = 0
         for ant in item_found.get("antecipacoes", []):
             if ant["origem"] == mes_origem and ant["status"] != "cancelada":
-                return {"success": False, "message": "Já existe uma antecipação ativa para este mês de origem."}
+                valor_ja_antecipado += ant["valor_antecipado"]
 
-        # Validar mês de destino (não pode ser depois da origem)
-        # Assumindo formato "mmm/yy" -> converter para date para comparar
-        try:
-            def parse_mes(m):
-                meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-                mes_str, ano_str = m.split('/')
-                mes_idx = meses.index(mes_str) + 1
-                return datetime(int("20" + ano_str), mes_idx, 1)
+        if valor_ja_antecipado + valor > item_found["valor"]:
+            return {"success": False, "message": f"Valor total antecipado (R$ {valor_ja_antecipado + valor:.2f}) excede o valor da parcela (R$ {item_found['valor']:.2f})."}
 
-            dt_origem = parse_mes(mes_origem)
-            dt_destino = parse_mes(mes_destino)
-
-            # Nova regra: Destino pode ser igual à origem (se quiser pagar no mesmo mês mas marcar diferente)
-            # Mas o principal uso é antecipar (destino < origem).
-            # Se destino > origem, é postergação (ainda não suportado, mas vamos bloquear).
-            
-            if dt_destino > dt_origem:
-                return {"success": False, "message": "Mês de destino deve ser anterior ou igual ao mês de origem."}
-            
-        except ValueError:
-             return {"success": False, "message": "Formato de mês inválido (use mmm/yy)."}
+        # Permitir antecipar para qualquer mês (inclusive posteriores)
+        # A validação de lógica de negócio será feita no frontend
 
         # Criar Objeto de Antecipação
         nova_antecipacao = {

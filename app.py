@@ -148,18 +148,18 @@ def get_meses_entre(inicio, fim):
 
 def calcular_numero_parcela(mes, inicio, fim):
     """
-    Calcula o número da parcela e o total de parcelas
-    Retorna: (numero_parcela, total_parcelas)
+    Calcula o número da parcela de um mês dentro do range inicio-fim.
+    Retorna (numero_parcela, total_parcelas) ou (None, total) se fora do range.
     """
     meses_ativos = get_meses_entre(inicio, fim)
     total_parcelas = len(meses_ativos)
     
-    try:
+    if mes in meses_ativos:
         numero_parcela = meses_ativos.index(mes) + 1
-    except ValueError:
-        numero_parcela = 0
-    
-    return numero_parcela, total_parcelas
+        return numero_parcela, total_parcelas
+    else:
+        # Retornar None para indicar que está fora do range
+        return None, total_parcelas
 
 def listar_antecipacoes_por_mes(mes_destino):
     """
@@ -471,7 +471,10 @@ if FEATURE_ANTECIPACAO:
                 # Função para formatar mês com indicador de parcela
                 def format_mes_com_parcela(mes):
                     num, total = calcular_numero_parcela(mes, item_sel["inicio"], item_sel["fim"])
-                    return f"{mes} (Parcela {num}/{total})"
+                    if num is not None:
+                        return f"{mes} (Parcela {num}/{total})"
+                    else:
+                        return f"{mes} (Fora do fluxo)"
                 
                 col_origem, col_destino = st.columns(2)
                 
@@ -513,7 +516,10 @@ if FEATURE_ANTECIPACAO:
                         with st.expander("📋 Parcelas Selecionadas", expanded=True):
                             for origem in origem_sels:
                                 num, total = calcular_numero_parcela(origem, item_sel["inicio"], item_sel["fim"])
-                                st.write(f"• {origem} (Parcela {num}/{total}) → {destino_sel}")
+                                if num is not None:
+                                    st.write(f"• {origem} (Parcela {num}/{total}) → {destino_sel}")
+                                else:
+                                    st.write(f"• {origem} (Fora do fluxo) → {destino_sel}")
                         
                         # Valor total
                         valor_total = item_sel["valor"] * len(origem_sels)
@@ -546,6 +552,16 @@ if FEATURE_ANTECIPACAO:
                             # Mostrar resultado
                             if sucessos > 0:
                                 st.success(f"✅ {sucessos} antecipação(ões) realizada(s) com sucesso!")
+                                
+                                # Encurtar fluxo automaticamente
+                                resultado_enc = antecipacao_service.encurtar_fluxo_item(item_sel["id"])
+                                if resultado_enc["success"]:
+                                    st.info(
+                                        f"🔄 **Fluxo encurtado automaticamente!**\n\n"
+                                        f"• Fim anterior: **{resultado_enc['fim_anterior']}**\n"
+                                        f"• Novo fim: **{resultado_enc['novo_fim']}**\n"
+                                        f"• Meses encurtados: **{resultado_enc['meses_encurtados']}**"
+                                    )
                             
                             if erros:
                                 st.error("❌ Erros encontrados:\n" + "\n".join(erros))
@@ -574,11 +590,23 @@ if FEATURE_ANTECIPACAO:
                     num_origem, total_origem = calcular_numero_parcela(ant['origem'], item_hist["inicio"], item_hist["fim"])
                     num_destino, total_destino = calcular_numero_parcela(ant['destino'], item_hist["inicio"], item_hist["fim"])
                     
+                    # Formatar parcela origem
+                    if num_origem is not None:
+                        texto_origem = f"{ant['origem']} (Parcela {num_origem}/{total_origem})"
+                    else:
+                        texto_origem = f"{ant['origem']} (Fora do fluxo)"
+                    
+                    # Formatar parcela destino
+                    if num_destino is not None:
+                        texto_destino = f"{ant['destino']} (Parcela {num_destino}/{total_destino})"
+                    else:
+                        texto_destino = f"{ant['destino']} (Fora do fluxo)"
+                    
                     def fmt_brl_valor(x):
                         return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                     
                     valor_fmt = fmt_brl_valor(ant['valor_antecipado'])
-                    titulo = f"{ant['origem']} (Parcela {num_origem}/{total_origem}) ➔ {ant['destino']} (Parcela {num_destino}/{total_destino}) - {valor_fmt} - {ant['status'].upper()}"
+                    titulo = f"{texto_origem} ➔ {texto_destino} - R$ {valor_fmt} - {ant['status'].upper()}"
                 else:
                     valor_fmt = f"{ant['valor_antecipado']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                     titulo = f"{ant['origem']} ➔ {ant['destino']} - {valor_fmt} - {ant['status'].upper()}"
@@ -796,7 +824,11 @@ for _, row in df_exibir.iterrows():
                 
                 if item_ant:
                     num_parcela, total_parcelas = calcular_numero_parcela(ant['origem'], item_ant["inicio"], item_ant["fim"])
-                    texto_parcela = f" (Parcela {num_parcela}/{total_parcelas})"
+                    
+                    if num_parcela is not None:
+                        texto_parcela = f" (Parcela {num_parcela}/{total_parcelas})"
+                    else:
+                        texto_parcela = " (Fora do fluxo)"
                 else:
                     texto_parcela = ""
                 
