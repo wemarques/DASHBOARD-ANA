@@ -161,6 +161,32 @@ def calcular_numero_parcela(mes, inicio, fim):
     
     return numero_parcela, total_parcelas
 
+def listar_antecipacoes_por_mes(mes_destino):
+    """
+    Lista todas as antecipações que foram movidas para um mês específico
+    Retorna: lista de dicionários com info das antecipações
+    """
+    antecipacoes_mes = []
+    
+    for item in st.session_state.itens:
+        if "antecipacoes" not in item:
+            continue
+        
+        for ant in item["antecipacoes"]:
+            if ant.get("status") != "confirmada":
+                continue
+            
+            if ant["destino"] == mes_destino:
+                antecipacoes_mes.append({
+                    "item_nome": item["nome"],
+                    "origem": ant["origem"],
+                    "destino": ant["destino"],
+                    "valor": ant["valor_antecipado"],
+                    "motivo": ant.get("motivo", "")
+                })
+    
+    return antecipacoes_mes
+
 def salvar_dados(itens_todos, meses_quit):
     """Salva dados no disco (JSON)"""
     dados = {
@@ -440,7 +466,7 @@ if FEATURE_ANTECIPACAO:
                     meses_futuros.append(m)
             
             if not meses_futuros:
-                st.warning("Não há parcelas futuras para este item.")
+                st.warning("Não há parcelas disponíveis para antecipação.")
             else:
                 # Função para formatar mês com indicador de parcela
                 def format_mes_com_parcela(mes):
@@ -449,84 +475,86 @@ if FEATURE_ANTECIPACAO:
                 
                 col_origem, col_destino = st.columns(2)
                 
-                # Multiselect para permitir múltiplas parcelas
+                # Seleção múltipla de parcelas de origem
                 origem_sels = col_origem.multiselect(
                     "Parcelas a Antecipar (Origem) - Selecione uma ou mais", 
                     meses_futuros, 
                     format_func=format_mes_com_parcela,
-                    key="ant_origem"
+                    key="ant_origem",
+                    help="Você pode selecionar múltiplas parcelas, inclusive não consecutivas"
                 )
                 
                 if not origem_sels:
-                    st.info("Selecione ao menos uma parcela para antecipar.")
+                    st.info("💡 Selecione ao menos uma parcela para antecipar.")
                 else:
-                    # Destino: único para todas as parcelas
-                    # Calcular meses de destino baseado na parcela MAIS ANTIGA selecionada
-                    dt_origem_mais_antiga = min([get_date_from_str(m) for m in origem_sels])
-                    
+                    # Destino: permitir QUALQUER mês (inclusive fora do range do item)
+                    # Permitir antecipar para qualquer mês disponível, excluindo apenas os selecionados como origem
                     meses_destino = []
                     for m in MESES_TODOS:
-                        dt_m = get_date_from_str(m)
-                        if dt_m < dt_origem_mais_antiga and dt_m >= get_date_from_str(item_sel["inicio"]):
+                        # Excluir apenas meses que já estão na seleção de origem
+                        if m not in origem_sels:
                             meses_destino.append(m)
                     
                     if not meses_destino:
-                        # Fallback: permitir qualquer mês anterior à origem mais antiga
-                        for m in MESES_TODOS:
-                            if get_date_from_str(m) < dt_origem_mais_antiga:
-                                meses_destino.append(m)
-                    
-                    destino_sel = col_destino.selectbox(
-                        "Mover TODAS para (Destino)", 
-                        meses_destino, 
-                        format_func=format_mes_com_parcela,
-                        index=len(meses_destino)-1 if meses_destino else 0, 
-                        key="ant_destino"
-                    )
-                    
-                    # Mostrar resumo
-                    st.info(f"📦 Você está antecipando **{len(origem_sels)} parcela(s)** para **{destino_sel}**")
-                    
-                    # Valor total a antecipar
-                    valor_total = item_sel["valor"] * len(origem_sels)
-                    def fmt_brl(x):
-                        return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                    st.metric("Valor Total a Antecipar", fmt_brl(valor_total))
-                    
-                    motivo = st.text_input("Motivo (Opcional)", key="ant_motivo")
-                    
-                    if st.button("🚀 Confirmar Antecipação", type="primary"):
-                        # Processar múltiplas antecipações
-                        sucessos = 0
-                        erros = []
+                        st.error("Não há meses de destino disponíveis.")
+                    else:
+                        destino_sel = col_destino.selectbox(
+                            "Mover TODAS para (Destino)", 
+                            meses_destino, 
+                            format_func=format_mes_com_parcela,
+                            key="ant_destino",
+                            help="Você pode antecipar para qualquer mês, inclusive posteriores"
+                        )
                         
-                        for origem in origem_sels:
-                            res = antecipacao_service.criar_antecipacao(
-                                item_id=item_sel["id"],
-                                mes_origem=origem,
-                                mes_destino=destino_sel,
-                                valor=item_sel["valor"],
-                                usuario="usuario_logado",
-                                motivo=motivo
-                            )
+                        # Resumo visual
+                        st.info(f"📦 Você está antecipando **{len(origem_sels)} parcela(s)** para **{destino_sel}**")
+                        
+                        # Mostrar lista de parcelas selecionadas
+                        with st.expander("📋 Parcelas Selecionadas", expanded=True):
+                            for origem in origem_sels:
+                                num, total = calcular_numero_parcela(origem, item_sel["inicio"], item_sel["fim"])
+                                st.write(f"• {origem} (Parcela {num}/{total}) → {destino_sel}")
+                        
+                        # Valor total
+                        valor_total = item_sel["valor"] * len(origem_sels)
+                        def fmt_brl(x):
+                            return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                        st.metric("Valor Total a Antecipar", fmt_brl(valor_total))
+                        
+                        motivo = st.text_input("Motivo (Opcional)", key="ant_motivo", placeholder="Ex: Antecipação de fim de ano")
+                        
+                        if st.button("🚀 Confirmar Antecipação", type="primary"):
+                            sucessos = 0
+                            erros = []
                             
-                            if res["success"]:
-                                sucessos += 1
-                            else:
-                                erros.append(f"{origem}: {res['message']}")
-                        
-                        # Mostrar resultado
-                        if sucessos > 0:
-                            st.success(f"✅ {sucessos} antecipação(ões) realizada(s) com sucesso!")
-                        
-                        if erros:
-                            st.error(f"❌ Erros encontrados:\n" + "\n".join(erros))
-                        
-                        # Recarregar dados
-                        if sucessos > 0:
-                            dados_rec = carregar_dados()
-                            st.session_state.itens = dados_rec["itens"]
-                            st.rerun()
+                            # Processar cada antecipação
+                            for origem in origem_sels:
+                                res = antecipacao_service.criar_antecipacao(
+                                    item_id=item_sel["id"],
+                                    mes_origem=origem,
+                                    mes_destino=destino_sel,
+                                    valor=item_sel["valor"],
+                                    usuario="usuario_logado",
+                                    motivo=motivo
+                                )
+                                
+                                if res["success"]:
+                                    sucessos += 1
+                                else:
+                                    erros.append(f"• {origem}: {res['message']}")
+                            
+                            # Mostrar resultado
+                            if sucessos > 0:
+                                st.success(f"✅ {sucessos} antecipação(ões) realizada(s) com sucesso!")
+                            
+                            if erros:
+                                st.error("❌ Erros encontrados:\n" + "\n".join(erros))
+                            
+                            # Recarregar dados
+                            if sucessos > 0:
+                                dados_rec = carregar_dados()
+                                st.session_state.itens = dados_rec["itens"]
+                                st.rerun()
         
         st.divider()
         st.subheader("📜 Histórico de Antecipações")
@@ -534,36 +562,64 @@ if FEATURE_ANTECIPACAO:
         
         if historico:
             for ant in historico:
-                # Calcular número da parcela para o histórico
+                # Encontrar item correspondente para calcular número da parcela
+                # Se item_sel está definido, usar ele; caso contrário, buscar pelo nome do item
                 if item_sel:
-                    num_origem, total_origem = calcular_numero_parcela(ant['origem'], item_sel["inicio"], item_sel["fim"])
-                    num_destino, total_destino = calcular_numero_parcela(ant['destino'], item_sel["inicio"], item_sel["fim"])
+                    item_hist = item_sel
+                else:
+                    # Buscar item pelo nome (retornado pelo backend)
+                    item_hist = next((i for i in st.session_state.itens if i["nome"] == ant.get("item_nome", "")), None)
+                
+                if item_hist:
+                    num_origem, total_origem = calcular_numero_parcela(ant['origem'], item_hist["inicio"], item_hist["fim"])
+                    num_destino, total_destino = calcular_numero_parcela(ant['destino'], item_hist["inicio"], item_hist["fim"])
                     
                     def fmt_brl_valor(x):
                         return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
                     
-                    titulo_hist = f"{ant['origem']} (Parcela {num_origem}/{total_origem}) ➔ {ant['destino']} (Parcela {num_destino}/{total_destino}) - R$ {fmt_brl_valor(ant['valor_antecipado'])} - {ant['status'].upper()}"
+                    valor_fmt = fmt_brl_valor(ant['valor_antecipado'])
+                    titulo = f"{ant['origem']} (Parcela {num_origem}/{total_origem}) ➔ {ant['destino']} (Parcela {num_destino}/{total_destino}) - {valor_fmt} - {ant['status'].upper()}"
                 else:
-                    titulo_hist = f"{ant['origem']} ➔ {ant['destino']} (R$ {ant['valor_antecipado']:,.2f}) - {ant['status'].upper()}"
+                    valor_fmt = f"{ant['valor_antecipado']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    titulo = f"{ant['origem']} ➔ {ant['destino']} - {valor_fmt} - {ant['status'].upper()}"
                 
-                with st.expander(titulo_hist, expanded=False):
+                # Ícone baseado no status
+                icone = "✅" if ant['status'] == 'confirmada' else "❌"
+                
+                with st.expander(f"{icone} {titulo}", expanded=False):
+                    st.write(f"**Item:** {ant.get('item_nome', 'N/A')}")
                     st.write(f"**Data:** {ant['timestamp']}")
-                    st.write(f"**Motivo:** {ant['motivo']}")
+                    st.write(f"**Usuário:** {ant.get('usuario', 'N/A')}")
+                    
+                    if ant.get('motivo'):
+                        st.write(f"**Motivo:** {ant['motivo']}")
                     
                     if ant['status'] == 'confirmada':
-                        if st.button("Desfazer (Cancelar)", key=f"undo_{ant['id_antecipacao']}"):
-                            res_undo = antecipacao_service.cancelar_antecipacao(
-                                item_id=item_sel["id"], 
-                                id_antecipacao=ant["id_antecipacao"],
-                                usuario="usuario_logado"
-                            )
-                            if res_undo["success"]:
-                                st.success("Antecipação cancelada!")
-                                dados_rec = carregar_dados()
-                                st.session_state.itens = dados_rec["itens"]
-                                st.rerun()
+                        if st.button("🔄 Desfazer (Cancelar)", key=f"undo_{ant['id_antecipacao']}"):
+                            # Buscar item_id para cancelamento
+                            if item_sel:
+                                item_id_para_cancelar = item_sel["id"]
                             else:
-                                st.error(res_undo["message"])
+                                # Buscar pelo nome do item
+                                item_encontrado = next((i for i in st.session_state.itens if i["nome"] == ant.get("item_nome", "")), None)
+                                item_id_para_cancelar = item_encontrado["id"] if item_encontrado else None
+                            
+                            if not item_id_para_cancelar:
+                                st.error("❌ Não foi possível identificar o item para cancelar a antecipação.")
+                            else:
+                                res_undo = antecipacao_service.cancelar_antecipacao(
+                                    item_id=item_id_para_cancelar, 
+                                    id_antecipacao=ant["id_antecipacao"],
+                                    usuario="usuario_logado"
+                                )
+                                
+                                if res_undo["success"]:
+                                    st.success("✅ Antecipação cancelada com sucesso!")
+                                    dados_rec = carregar_dados()
+                                    st.session_state.itens = dados_rec["itens"]
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ Erro: {res_undo['message']}")
         else:
             st.info("Nenhuma antecipação registrada.")
 
@@ -721,6 +777,37 @@ for _, row in df_exibir.iterrows():
         
         if not itens_exibidos:
             st.write("_Nenhum item neste mês._")
+        
+        # Verificar se há antecipações para este mês
+        antecipacoes_mes = listar_antecipacoes_por_mes(mes)
+        
+        if antecipacoes_mes:
+            st.markdown("---")
+            st.markdown("**📥 Prestações Antecipadas para este mês:**")
+            
+            for ant in antecipacoes_mes:
+                # Formato: jan/26 ➔ nov/25 (R$ 398.57) Prestação Antecipada
+                def fmt_brl_valor(x):
+                    return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                valor_fmt = fmt_brl_valor(ant['valor'])
+                
+                # Buscar item para calcular número da parcela
+                item_ant = next((i for i in st.session_state.itens if i["nome"] == ant['item_nome']), None)
+                
+                if item_ant:
+                    num_parcela, total_parcelas = calcular_numero_parcela(ant['origem'], item_ant["inicio"], item_ant["fim"])
+                    texto_parcela = f" (Parcela {num_parcela}/{total_parcelas})"
+                else:
+                    texto_parcela = ""
+                
+                # Formato: jan/26 ➔ nov/25 (R$ 398.57) Prestação Antecipada
+                st.markdown(
+                    f"• {ant['origem']}{texto_parcela} ➔ {ant['destino']} (R$ {valor_fmt}) *Prestação Antecipada*",
+                    unsafe_allow_html=True
+                )
+                
+                if ant['motivo']:
+                    st.caption(f"  Motivo: {ant['motivo']}")
         
         # Saldo final
         st.markdown(f"**Saldo:** {formatar_valor_financeiro(saldo)}", unsafe_allow_html=True)
