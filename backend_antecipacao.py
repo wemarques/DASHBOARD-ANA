@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import logging
 import os
+from github_integration import push_to_github  # Integração GitHub
 
 # Configuração de Logs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -34,8 +35,15 @@ class AntecipacaoService:
             return json.load(f)
 
     def _save_data(self, data):
+        # 1. Salvar Localmente (Cache imediato)
         with open(self.data_file, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+            
+        # 2. Persistir no GitHub (Cloud)
+        try:
+            push_to_github(data, commit_message="Update data: Antecipação realizada/cancelada")
+        except Exception as e:
+            logger.error(f"Falha ao persistir no GitHub: {e}")
 
     def _log_audit(self, action, user, details, success=True):
         entry = {

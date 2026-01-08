@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import hashlib
 import config_manager  # Novo gerenciador de config
 from backend_antecipacao import AntecipacaoService  # Backend Antecipação
+from github_integration import push_to_github  # Integração GitHub
 from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS
 
 # Configuração da página
@@ -372,13 +373,20 @@ def migrar_dados_para_novo_formato():
     return len(dados["itens"])
 
 def salvar_dados(itens_todos, meses_quit):
-    """Salva dados no disco (JSON)"""
+    """Salva dados no disco (JSON) e no GitHub"""
     dados = {
         "itens": itens_todos,
         "meses_quitados": meses_quit
     }
+    # Local
     with open(DADOS_ARQUIVO, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
+    
+    # GitHub Cloud Persistence
+    try:
+        push_to_github(dados, commit_message="Update data: Itens/Quitação alterados via App")
+    except Exception as e:
+        print(f"Erro ao salvar no GitHub: {e}")
 
 def carregar_dados():
     """Carrega dados do disco, se existir"""
