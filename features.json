@@ -9,6 +9,6 @@
     "feature_antecipacao_parcelas": true
   },
   "production": {
-    "feature_antecipacao_parcelas": false
+    "feature_antecipacao_parcelas": true
   }
 }
