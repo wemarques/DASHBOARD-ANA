@@ -484,6 +484,11 @@ def calcular_dataframe():
     return df
 
 # ========================================
+# CÁLCULO DO DATAFRAME ANTES DAS ABAS
+# ========================================
+df = calcular_dataframe()
+
+# ========================================
 # NAVEGAÇÃO POR ABAS
 # ========================================
 aba1, aba2, aba3, aba4 = st.tabs(["📊 Gestão Executiva", "📅 Detalhamento Mensal", "🛠️ Gerenciar Itens", "⚡ Antecipar Parcelas"])
@@ -670,8 +675,7 @@ with aba2:
 st.title("📊 Dashboard Ana - Gestão Financeira")
 st.caption(f"Atualizado em {datetime.now().strftime('%d/%m/%Y %H:%M')} — valores em R$")
 
-# Quadro resumo gerencial
-df = calcular_dataframe()
+# Quadro resumo gerencial (usar df já calculado)
 exibir_quadro_resumo_gerencial(df)
 
 st.divider()
