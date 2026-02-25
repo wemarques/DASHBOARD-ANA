@@ -118,22 +118,6 @@ class AntecipacaoService:
             }
             
         return {"success": True, "message": "Fim já é original"}
-        
-        # Salvar
-        self._save_data(data)
-        self._log_audit("ENCURTAR_FLUXO", "sistema", {
-            "item_id": item_id,
-            "fim_anterior": fim_anterior,
-            "novo_fim": novo_fim,
-            "meses_encurtados": meses_encurtados
-        })
-        
-        return {
-            "success": True,
-            "novo_fim": novo_fim,
-            "meses_encurtados": meses_encurtados,
-            "fim_anterior": fim_anterior
-        }
 
     def listar_antecipacoes(self, item_id=None, status=None):
         data = self._load_data()
