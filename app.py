@@ -558,36 +558,6 @@ with aba2:
     
     st.divider()
     
-    # === GESTÃO EXECUTIVA - RESULTADO MENSAL ===
-    st.header("📊 Gestão Executiva - Resultado Mensal")
-    
-    # Seletor de mês para análise executiva
-    mes_atual = datetime.now().strftime("%b/%y").lower()
-    meses_disponiveis = list(df['mesAno'])
-    
-    # Encontrar o mês mais próximo da data atual
-    mes_default = meses_disponiveis[0]
-    for mes in meses_disponiveis:
-        try:
-            mes_dt = datetime.strptime(mes, "%b/%y")
-            if mes_dt <= datetime.now():
-                mes_default = mes
-        except:
-            continue
-    
-    mes_selecionado = st.selectbox(
-        "📅 Selecione o mês para análise executiva:",
-        meses_disponiveis,
-        index=meses_disponiveis.index(mes_default) if mes_default in meses_disponiveis else 0,
-        key="mes_executivo"
-    )
-    
-    # Chamar a função de gestão executiva
-    exibir_gestao_executiva(st.session_state.itens, st.session_state.meses_quitados, df, mes_selecionado)
-    
-    st.divider()
-    
-    # Gráficos existentes...
     col_left, col_right = st.columns(2)
     
     with col_left:
