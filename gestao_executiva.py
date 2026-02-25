@@ -172,8 +172,7 @@ class GestaoExecutiva:
             xaxis_title="Categoria",
             yaxis_title="Valor (R$)",
             height=400,
-            showlegend=False,
-            responsive=True
+            showlegend=False
         )
         
         st.plotly_chart(fig, use_container_width=True)
