@@ -11,6 +11,7 @@ import config_manager  # Novo gerenciador de config
 from backend_antecipacao import AntecipacaoService  # Backend Antecipação
 from github_integration import push_to_github  # Integração GitHub
 from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS
+from gestao_executiva import exibir_gestao_executiva, exibir_resumo_executivo  # Gestão Executiva
 
 # Configuração da página
 st.set_page_config(
@@ -483,12 +484,47 @@ def calcular_dataframe():
     return df
 
 # ========================================
-# 5. Função para exibir quadro resumo com gráficos
+# NAVEGAÇÃO POR ABAS
 # ========================================
-def exibir_quadro_resumo_gerencial(df):
-    st.header("📊 Resumo Gerencial")
+aba1, aba2, aba3, aba4 = st.tabs(["📊 Gestão Executiva", "📅 Detalhamento Mensal", "🛠️ Gerenciar Itens", "⚡ Antecipar Parcelas"])
+
+with aba1:
+    # === GESTÃO EXECUTIVA - RESULTADO MENSAL ===
+    st.header("📊 Gestão Executiva - Resultado Mensal")
     
-    # Calcular totais
+    # Resumo Executivo Rápido
+    st.subheader("📈 Resumo Executivo")
+    exibir_resumo_executivo(st.session_state.itens, st.session_state.meses_quitados, df)
+    
+    st.divider()
+    
+    # Seletor de mês para análise executiva detalhada
+    mes_atual = datetime.now().strftime("%b/%y").lower()
+    meses_disponiveis = list(df['mesAno'])
+    
+    # Encontrar o mês mais próximo da data atual
+    mes_default = meses_disponiveis[0]
+    for mes in meses_disponiveis:
+        try:
+            mes_dt = datetime.strptime(mes, "%b/%y")
+            if mes_dt <= datetime.now():
+                mes_default = mes
+        except:
+            continue
+    
+    mes_selecionado = st.selectbox(
+        "📅 Selecione o mês para análise executiva detalhada:",
+        meses_disponiveis,
+        index=meses_disponiveis.index(mes_default) if mes_default in meses_disponiveis else 0,
+        key="mes_executivo"
+    )
+    
+    # Chamar a função de gestão executiva detalhada
+    exibir_gestao_executiva(st.session_state.itens, st.session_state.meses_quitados, df, mes_selecionado)
+
+with aba2:
+    # === DETALHAMENTO MENSAL (CONTEÚDO EXISTENTE) ===
+    st.header("📅 Detalhamento Mensal")
     total_debitos = 0
     total_creditos = 0
     
@@ -517,7 +553,36 @@ def exibir_quadro_resumo_gerencial(df):
     
     st.divider()
     
-    # Gráficos
+    # === GESTÃO EXECUTIVA - RESULTADO MENSAL ===
+    st.header("📊 Gestão Executiva - Resultado Mensal")
+    
+    # Seletor de mês para análise executiva
+    mes_atual = datetime.now().strftime("%b/%y").lower()
+    meses_disponiveis = list(df['mesAno'])
+    
+    # Encontrar o mês mais próximo da data atual
+    mes_default = meses_disponiveis[0]
+    for mes in meses_disponiveis:
+        try:
+            mes_dt = datetime.strptime(mes, "%b/%y")
+            if mes_dt <= datetime.now():
+                mes_default = mes
+        except:
+            continue
+    
+    mes_selecionado = st.selectbox(
+        "📅 Selecione o mês para análise executiva:",
+        meses_disponiveis,
+        index=meses_disponiveis.index(mes_default) if mes_default in meses_disponiveis else 0,
+        key="mes_executivo"
+    )
+    
+    # Chamar a função de gestão executiva
+    exibir_gestao_executiva(st.session_state.itens, st.session_state.meses_quitados, df, mes_selecionado)
+    
+    st.divider()
+    
+    # Gráficos existentes...
     col_left, col_right = st.columns(2)
     
     with col_left:
