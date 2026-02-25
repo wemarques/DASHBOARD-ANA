@@ -36,14 +36,23 @@ class AntecipacaoService:
 
     def _save_data(self, data):
         # 1. Salvar Localmente (Cache imediato)
-        with open(self.data_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        try:
+            with open(self.data_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"Falha ao salvar localmente: {e}")
+            return False, f"Erro local: {e}"
             
         # 2. Persistir no GitHub (Cloud)
         try:
-            push_to_github(data, commit_message="Update data: Antecipação realizada/cancelada")
+            success = push_to_github(data, commit_message="Update data: Antecipação realizada/cancelada")
+            if success:
+                return True, "Salvo com sucesso!"
+            else:
+                return False, "Aviso: Salvo localmente, mas falha no GitHub (verifique token)."
         except Exception as e:
             logger.error(f"Falha ao persistir no GitHub: {e}")
+            return False, f"Aviso: Erro ao conectar com GitHub: {e}"
 
     def _log_audit(self, action, user, details, success=True):
         entry = {
@@ -191,10 +200,14 @@ class AntecipacaoService:
         
         item_found["antecipacoes"].append(nova_antecipacao)
         
-        self._save_data(data)
-        self._log_audit("CRIAR_ANTECIPACAO", usuario, nova_antecipacao)
+        success, msg = self._save_data(data)
+        self._log_audit("CRIAR_ANTECIPACAO", usuario, nova_antecipacao, success=success)
         
-        return {"success": True, "data": nova_antecipacao}
+        result = {"success": True, "data": nova_antecipacao}
+        if not success:
+            result["warning"] = msg
+            
+        return result
 
     def cancelar_antecipacao(self, item_id, id_antecipacao, usuario):
         data = self._load_data()
@@ -221,10 +234,14 @@ class AntecipacaoService:
         ant_found["cancelado_por"] = usuario
         ant_found["cancelado_em"] = datetime.now().isoformat()
 
-        self._save_data(data)
-        self._log_audit("CANCELAR_ANTECIPACAO", usuario, {"id_antecipacao": id_antecipacao, "item_id": item_id})
+        success, msg = self._save_data(data)
+        self._log_audit("CANCELAR_ANTECIPACAO", usuario, {"id_antecipacao": id_antecipacao, "item_id": item_id}, success=success)
 
         # Recalcular fluxo do item para restaurar meses se necessário
         self.encurtar_fluxo_item(item_id)
 
-        return {"success": True}
+        result = {"success": True}
+        if not success:
+            result["warning"] = msg
+            
+        return result

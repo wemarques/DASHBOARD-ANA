@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+import time
 from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
@@ -835,6 +836,7 @@ with aba4:
                             if st.button("🚀 Confirmar Antecipação", type="primary"):
                                 sucessos = 0
                                 erros = []
+                                warnings = []
                                 
                                 # Processar cada antecipação
                                 for origem in origem_sels:
@@ -865,6 +867,8 @@ with aba4:
                                     
                                     if res["success"]:
                                         sucessos += 1
+                                        if "warning" in res:
+                                            warnings.append(f"• {origem}: {res['warning']}")
                                     else:
                                         erros.append(f"• {origem}: {res['message']}")
                                 
@@ -872,15 +876,15 @@ with aba4:
                                 if sucessos > 0:
                                     st.success(f"✅ {sucessos} antecipação(ões) realizada(s) com sucesso!")
                                     
-                                    # Encurtar fluxo automaticamente
+                                    if warnings:
+                                        # Mostrar apenas avisos únicos
+                                        unique_warnings = list(set(warnings))
+                                        st.warning("⚠️ **Atenção:**\n" + "\n".join(unique_warnings))
+                                    
+                                    # Encurtar fluxo automaticamente (agora restaura o original)
                                     resultado_enc = antecipacao_service.encurtar_fluxo_item(item_sel["id"])
-                                    if resultado_enc["success"]:
-                                        st.info(
-                                            f"🔄 **Fluxo encurtado automaticamente!**\n\n"
-                                            f"• Fim anterior: **{resultado_enc['fim_anterior']}**\n"
-                                            f"• Novo fim: **{resultado_enc['novo_fim']}**\n"
-                                            f"• Meses encurtados: **{resultado_enc['meses_encurtados']}**"
-                                        )
+                                    if resultado_enc.get("success") and resultado_enc.get("novo_fim"):
+                                        st.info(f"🔄 Fluxo do item validado e restaurado para o contrato original (Fim: {resultado_enc['novo_fim']})")
                                 
                                 if erros:
                                     st.error("❌ Erros encontrados:\n" + "\n".join(erros))
@@ -970,12 +974,18 @@ with aba4:
                                     )
                                     
                                     if res_undo["success"]:
-                                        st.success("✅ Antecipação cancelada com sucesso!")
+                                        if "warning" in res_undo:
+                                            st.warning(f"⚠️ Atenção: {res_undo['warning']}")
+                                            time.sleep(3) # Tempo para leitura
+                                        else:
+                                            st.success("✅ Antecipação cancelada com sucesso!")
+                                            time.sleep(1)
+                                        
                                         dados_rec = carregar_dados()
                                         st.session_state.itens = dados_rec["itens"]
                                         st.rerun()
                                     else:
-                                        st.error(f"❌ Erro: {res_undo['message']}")
+                                        st.error(f"❌ Erro: {res_undo.get('message', 'Erro desconhecido')}")
             else:
                 st.info("Nenhuma antecipação registrada.")
     
