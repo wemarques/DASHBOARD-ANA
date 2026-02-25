@@ -484,6 +484,12 @@ def calcular_dataframe():
     return df
 
 # ========================================
+# 5. Interface do usuário
+# ========================================
+st.title("📊 Dashboard Ana - Gestão Financeira")
+st.caption(f"Atualizado em {datetime.now().strftime('%d/%m/%Y %H:%M')} — valores em R$")
+
+# ========================================
 # CÁLCULO DO DATAFRAME ANTES DAS ABAS
 # ========================================
 df = calcular_dataframe()
@@ -639,521 +645,511 @@ with aba2:
     else:
         st.info("Nenhum item cadastrado.")
 
-# ========================================
-# 6. Interface do usuário
-# ========================================
-st.title("📊 Dashboard Ana - Gestão Financeira")
-st.caption(f"Atualizado em {datetime.now().strftime('%d/%m/%Y %H:%M')} — valores em R$")
 
-# Quadro resumo gerencial (usar df já calculado)
-exibir_quadro_resumo_gerencial(df)
-
-st.divider()
-
-# Seção: Gerenciar itens
-st.header("🛠️ Gerenciar Itens")
-
-if FEATURE_ANTECIPACAO:
-    with st.expander("⚡ Antecipar Parcelas (Feature Ativa)", expanded=False):
-        st.caption("Antecipe pagamentos futuros para meses atuais.")
-        
-        # 1. Selecionar Item (apenas Débitos)
-        opcoes_itens = [i for i in st.session_state.itens if i["tipo"] == "debito"]
-        item_sel = st.selectbox(
-            "Selecione a Despesa", 
-            opcoes_itens, 
-            format_func=lambda x: x["nome"],
-            key="ant_item"
-        )
-        
-        if item_sel:
-            # 2. Listar Parcelas Futuras (Origem)
-            # Regra: Parcela deve estar no futuro e ainda ter saldo > 0
-            # Vamos simplificar pegando meses do item que ainda não passaram
+with aba4:
+    if FEATURE_ANTECIPACAO:
+        with st.expander("⚡ Antecipar Parcelas (Feature Ativa)", expanded=False):
+            st.caption("Antecipe pagamentos futuros para meses atuais.")
             
-            # Identificar mês atual (simulação ou real)
-            mes_atual_str = datetime.now().strftime("%b/%y").lower()
-            # Mapa de ordem dos meses para comparação
-            def get_date_from_str(m):
-                meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
-                mes, ano = m.split('/')
-                return datetime(int("20"+ano), meses.index(mes)+1, 1)
-
-            hoje = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            # 1. Selecionar Item (apenas Débitos)
+            opcoes_itens = [i for i in st.session_state.itens if i["tipo"] == "debito"]
+            item_sel = st.selectbox(
+                "Selecione a Despesa", 
+                opcoes_itens, 
+                format_func=lambda x: x["nome"],
+                key="ant_item"
+            )
             
-            meses_ativos = get_meses_entre(item_sel["inicio"], item_sel["fim"])
-            meses_futuros = []
-            
-            for m in meses_ativos:
-                # Regra: Permitir antecipar parcelas de qualquer mês que ainda não foi quitado
-                # Ou seja, se o mês já passou mas não foi marcado como quitado, ele é elegível.
-                # Se o mês é futuro, sempre é elegível.
+            if item_sel:
+                # 2. Listar Parcelas Futuras (Origem)
+                # Regra: Parcela deve estar no futuro e ainda ter saldo > 0
+                # Vamos simplificar pegando meses do item que ainda não passaram
                 
-                # Vamos checar se o mês está na lista de meses_quitados
-                is_quitado = m in st.session_state.meses_quitados
+                # Identificar mês atual (simulação ou real)
+                mes_atual_str = datetime.now().strftime("%b/%y").lower()
+                # Mapa de ordem dos meses para comparação
+                def get_date_from_str(m):
+                    meses = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
+                    mes, ano = m.split('/')
+                    return datetime(int("20"+ano), meses.index(mes)+1, 1)
+    
+                hoje = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 
-                if not is_quitado:
-                    # Verificar se já foi totalmente antecipada (opcional, mas bom pra UX)
-                    meses_futuros.append(m)
-            
-            if not meses_futuros:
-                st.warning("Não há parcelas disponíveis para antecipação.")
-            else:
-                # Função para formatar mês com indicador de parcela
-                def format_mes_com_parcela(mes):
-                    num, total = calcular_numero_parcela(mes, item_sel["inicio"], item_sel["fim"])
-                    if num is not None:
-                        return f"{mes} (Parcela {num}/{total})"
-                    else:
-                        return f"{mes} (Fora do fluxo)"
+                meses_ativos = get_meses_entre(item_sel["inicio"], item_sel["fim"])
+                meses_futuros = []
                 
-                col_origem, col_destino = st.columns(2)
-                
-                # Seleção múltipla de parcelas de origem
-                origem_sels = col_origem.multiselect(
-                    "Parcelas a Antecipar (Origem) - Selecione uma ou mais", 
-                    meses_futuros, 
-                    format_func=format_mes_com_parcela,
-                    key="ant_origem",
-                    help="Você pode selecionar múltiplas parcelas, inclusive não consecutivas"
-                )
-                
-                if not origem_sels:
-                    st.info("💡 Selecione ao menos uma parcela para antecipar.")
-                else:
-                    # Destino: permitir QUALQUER mês (inclusive fora do range do item)
-                    # Permitir antecipar para qualquer mês disponível, excluindo apenas os selecionados como origem
-                    meses_destino = []
-                    for m in MESES_TODOS:
-                        # Excluir apenas meses que já estão na seleção de origem
-                        if m not in origem_sels:
-                            meses_destino.append(m)
+                for m in meses_ativos:
+                    # Regra: Permitir antecipar parcelas de qualquer mês que ainda não foi quitado
+                    # Ou seja, se o mês já passou mas não foi marcado como quitado, ele é elegível.
+                    # Se o mês é futuro, sempre é elegível.
                     
-                    if not meses_destino:
-                        st.error("Não há meses de destino disponíveis.")
+                    # Vamos checar se o mês está na lista de meses_quitados
+                    is_quitado = m in st.session_state.meses_quitados
+                    
+                    if not is_quitado:
+                        # Verificar se já foi totalmente antecipada (opcional, mas bom pra UX)
+                        meses_futuros.append(m)
+                
+                if not meses_futuros:
+                    st.warning("Não há parcelas disponíveis para antecipação.")
+                else:
+                    # Função para formatar mês com indicador de parcela
+                    def format_mes_com_parcela(mes):
+                        num, total = calcular_numero_parcela(mes, item_sel["inicio"], item_sel["fim"])
+                        if num is not None:
+                            return f"{mes} (Parcela {num}/{total})"
+                        else:
+                            return f"{mes} (Fora do fluxo)"
+                    
+                    col_origem, col_destino = st.columns(2)
+                    
+                    # Seleção múltipla de parcelas de origem
+                    origem_sels = col_origem.multiselect(
+                        "Parcelas a Antecipar (Origem) - Selecione uma ou mais", 
+                        meses_futuros, 
+                        format_func=format_mes_com_parcela,
+                        key="ant_origem",
+                        help="Você pode selecionar múltiplas parcelas, inclusive não consecutivas"
+                    )
+                    
+                    if not origem_sels:
+                        st.info("💡 Selecione ao menos uma parcela para antecipar.")
                     else:
-                        destino_sel = col_destino.selectbox(
-                            "Mover TODAS para (Destino)", 
-                            meses_destino, 
-                            format_func=format_mes_com_parcela,
-                            key="ant_destino",
-                            help="Você pode antecipar para qualquer mês, inclusive posteriores"
-                        )
+                        # Destino: permitir QUALQUER mês (inclusive fora do range do item)
+                        # Permitir antecipar para qualquer mês disponível, excluindo apenas os selecionados como origem
+                        meses_destino = []
+                        for m in MESES_TODOS:
+                            # Excluir apenas meses que já estão na seleção de origem
+                            if m not in origem_sels:
+                                meses_destino.append(m)
                         
-                        # Resumo visual
-                        st.info(f"📦 Você está antecipando **{len(origem_sels)} parcela(s)** para **{destino_sel}**")
-                        
-                        # Mostrar lista de parcelas selecionadas
-                        with st.expander("📋 Parcelas Selecionadas", expanded=True):
-                            for origem in origem_sels:
-                                num, total = calcular_numero_parcela(origem, item_sel["inicio"], item_sel["fim"])
-                                if num is not None:
-                                    st.write(f"• {origem} (Parcela {num}/{total}) → {destino_sel}")
-                                else:
-                                    st.write(f"• {origem} (Fora do fluxo) → {destino_sel}")
-                        
-                        # Valor total
-                        valor_total = item_sel["valor"] * len(origem_sels)
-                        def fmt_brl(x):
-                            return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                        st.metric("Valor Total a Antecipar", fmt_brl(valor_total))
-                        
-                        motivo = st.text_input("Motivo (Opcional)", key="ant_motivo", placeholder="Ex: Antecipação de fim de ano")
-                        
-                        if st.button("🚀 Confirmar Antecipação", type="primary"):
-                            sucessos = 0
-                            erros = []
+                        if not meses_destino:
+                            st.error("Não há meses de destino disponíveis.")
+                        else:
+                            destino_sel = col_destino.selectbox(
+                                "Mover TODAS para (Destino)", 
+                                meses_destino, 
+                                format_func=format_mes_com_parcela,
+                                key="ant_destino",
+                                help="Você pode antecipar para qualquer mês, inclusive posteriores"
+                            )
                             
-                            # Processar cada antecipação
-                            for origem in origem_sels:
-                                # Calcular mês original da parcela usando cronograma
-                                cronograma = item_sel.get("cronograma", {})
-                                mapeamento = cronograma.get("mapeamento", {})
-                                
-                                # Buscar mês original no mapeamento
-                                mes_original = None
-                                for mes_orig, mes_venc in mapeamento.items():
-                                    if mes_venc == origem:
-                                        mes_original = mes_orig
-                                        break
-                                
-                                # Se não encontrou no mapeamento, usar origem (compatibilidade)
-                                if not mes_original:
-                                    mes_original = origem
-                                
-                                res = antecipacao_service.criar_antecipacao(
-                                    item_id=item_sel["id"],
-                                    mes_origem=origem,
-                                    mes_destino=destino_sel,
-                                    valor=item_sel["valor"],
-                                    usuario="usuario_logado",
-                                    motivo=motivo,
-                                    mes_original_parcela=mes_original
-                                )
-                                
-                                if res["success"]:
-                                    sucessos += 1
-                                else:
-                                    erros.append(f"• {origem}: {res['message']}")
+                            # Resumo visual
+                            st.info(f"📦 Você está antecipando **{len(origem_sels)} parcela(s)** para **{destino_sel}**")
                             
-                            # Mostrar resultado
-                            if sucessos > 0:
-                                st.success(f"✅ {sucessos} antecipação(ões) realizada(s) com sucesso!")
+                            # Mostrar lista de parcelas selecionadas
+                            with st.expander("📋 Parcelas Selecionadas", expanded=True):
+                                for origem in origem_sels:
+                                    num, total = calcular_numero_parcela(origem, item_sel["inicio"], item_sel["fim"])
+                                    if num is not None:
+                                        st.write(f"• {origem} (Parcela {num}/{total}) → {destino_sel}")
+                                    else:
+                                        st.write(f"• {origem} (Fora do fluxo) → {destino_sel}")
+                            
+                            # Valor total
+                            valor_total = item_sel["valor"] * len(origem_sels)
+                            def fmt_brl(x):
+                                return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                            st.metric("Valor Total a Antecipar", fmt_brl(valor_total))
+                            
+                            motivo = st.text_input("Motivo (Opcional)", key="ant_motivo", placeholder="Ex: Antecipação de fim de ano")
+                            
+                            if st.button("🚀 Confirmar Antecipação", type="primary"):
+                                sucessos = 0
+                                erros = []
                                 
-                                # Encurtar fluxo automaticamente
-                                resultado_enc = antecipacao_service.encurtar_fluxo_item(item_sel["id"])
-                                if resultado_enc["success"]:
-                                    st.info(
-                                        f"🔄 **Fluxo encurtado automaticamente!**\n\n"
-                                        f"• Fim anterior: **{resultado_enc['fim_anterior']}**\n"
-                                        f"• Novo fim: **{resultado_enc['novo_fim']}**\n"
-                                        f"• Meses encurtados: **{resultado_enc['meses_encurtados']}**"
+                                # Processar cada antecipação
+                                for origem in origem_sels:
+                                    # Calcular mês original da parcela usando cronograma
+                                    cronograma = item_sel.get("cronograma", {})
+                                    mapeamento = cronograma.get("mapeamento", {})
+                                    
+                                    # Buscar mês original no mapeamento
+                                    mes_original = None
+                                    for mes_orig, mes_venc in mapeamento.items():
+                                        if mes_venc == origem:
+                                            mes_original = mes_orig
+                                            break
+                                    
+                                    # Se não encontrou no mapeamento, usar origem (compatibilidade)
+                                    if not mes_original:
+                                        mes_original = origem
+                                    
+                                    res = antecipacao_service.criar_antecipacao(
+                                        item_id=item_sel["id"],
+                                        mes_origem=origem,
+                                        mes_destino=destino_sel,
+                                        valor=item_sel["valor"],
+                                        usuario="usuario_logado",
+                                        motivo=motivo,
+                                        mes_original_parcela=mes_original
                                     )
-                            
-                            if erros:
-                                st.error("❌ Erros encontrados:\n" + "\n".join(erros))
-                            
-                            # Recarregar dados e recalcular cronograma
-                            if sucessos > 0:
-                                dados_rec = carregar_dados()
+                                    
+                                    if res["success"]:
+                                        sucessos += 1
+                                    else:
+                                        erros.append(f"• {origem}: {res['message']}")
                                 
-                                # Recalcular cronograma do item (sem encurtar)
-                                for item in dados_rec["itens"]:
-                                    if item["id"] == item_sel["id"]:
-                                        if "contrato" in item:
-                                            item["cronograma"] = calcular_cronograma_atual(item)
-                                        break
+                                # Mostrar resultado
+                                if sucessos > 0:
+                                    st.success(f"✅ {sucessos} antecipação(ões) realizada(s) com sucesso!")
+                                    
+                                    # Encurtar fluxo automaticamente
+                                    resultado_enc = antecipacao_service.encurtar_fluxo_item(item_sel["id"])
+                                    if resultado_enc["success"]:
+                                        st.info(
+                                            f"🔄 **Fluxo encurtado automaticamente!**\n\n"
+                                            f"• Fim anterior: **{resultado_enc['fim_anterior']}**\n"
+                                            f"• Novo fim: **{resultado_enc['novo_fim']}**\n"
+                                            f"• Meses encurtados: **{resultado_enc['meses_encurtados']}**"
+                                        )
                                 
-                                salvar_dados(dados_rec["itens"], dados_rec["meses_quitados"])
-                                st.session_state.itens = dados_rec["itens"]
-                                st.rerun()
-        
-        st.divider()
-        st.subheader("📜 Histórico de Antecipações")
-        historico = antecipacao_service.listar_antecipacoes(item_id=item_sel["id"] if item_sel else None)
-        
-        if historico:
-            for ant in historico:
-                # Encontrar item correspondente para calcular número da parcela
-                # Se item_sel está definido, usar ele; caso contrário, buscar pelo nome do item
-                if item_sel:
-                    item_hist = item_sel
-                else:
-                    # Buscar item pelo nome (retornado pelo backend)
-                    item_hist = next((i for i in st.session_state.itens if i["nome"] == ant.get("item_nome", "")), None)
-                
-                if item_hist:
-                    num_origem, total_origem = calcular_numero_parcela(ant['origem'], item_hist["inicio"], item_hist["fim"])
-                    num_destino, total_destino = calcular_numero_parcela(ant['destino'], item_hist["inicio"], item_hist["fim"])
-                    
-                    # Formatar parcela origem
-                    if num_origem is not None:
-                        texto_origem = f"{ant['origem']} (Parcela {num_origem}/{total_origem})"
-                    else:
-                        texto_origem = f"{ant['origem']} (Fora do fluxo)"
-                    
-                    # Formatar parcela destino
-                    if num_destino is not None:
-                        texto_destino = f"{ant['destino']} (Parcela {num_destino}/{total_destino})"
-                    else:
-                        texto_destino = f"{ant['destino']} (Fora do fluxo)"
-                    
-                    def fmt_brl_valor(x):
-                        return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                    
-                    valor_fmt = fmt_brl_valor(ant['valor_antecipado'])
-                    titulo = f"{texto_origem} ➔ {texto_destino} - R$ {valor_fmt} - {ant['status'].upper()}"
-                else:
-                    valor_fmt = f"{ant['valor_antecipado']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                    titulo = f"{ant['origem']} ➔ {ant['destino']} - {valor_fmt} - {ant['status'].upper()}"
-                
-                # Ícone baseado no status
-                icone = "✅" if ant['status'] == 'confirmada' else "❌"
-                
-                with st.expander(f"{icone} {titulo}", expanded=False):
-                    st.write(f"**Item:** {ant.get('item_nome', 'N/A')}")
-                    st.write(f"**Data:** {ant['timestamp']}")
-                    st.write(f"**Usuário:** {ant.get('usuario', 'N/A')}")
-                    
-                    if ant.get('motivo'):
-                        st.write(f"**Motivo:** {ant['motivo']}")
-                    
-                    if ant['status'] == 'confirmada':
-                        if st.button("🔄 Desfazer (Cancelar)", key=f"undo_{ant['id_antecipacao']}"):
-                            # Buscar item_id para cancelamento
-                            if item_sel:
-                                item_id_para_cancelar = item_sel["id"]
-                            else:
-                                # Buscar pelo nome do item
-                                item_encontrado = next((i for i in st.session_state.itens if i["nome"] == ant.get("item_nome", "")), None)
-                                item_id_para_cancelar = item_encontrado["id"] if item_encontrado else None
-                            
-                            if not item_id_para_cancelar:
-                                st.error("❌ Não foi possível identificar o item para cancelar a antecipação.")
-                            else:
-                                res_undo = antecipacao_service.cancelar_antecipacao(
-                                    item_id=item_id_para_cancelar, 
-                                    id_antecipacao=ant["id_antecipacao"],
-                                    usuario="usuario_logado"
-                                )
+                                if erros:
+                                    st.error("❌ Erros encontrados:\n" + "\n".join(erros))
                                 
-                                if res_undo["success"]:
-                                    st.success("✅ Antecipação cancelada com sucesso!")
+                                # Recarregar dados e recalcular cronograma
+                                if sucessos > 0:
                                     dados_rec = carregar_dados()
+                                    
+                                    # Recalcular cronograma do item (sem encurtar)
+                                    for item in dados_rec["itens"]:
+                                        if item["id"] == item_sel["id"]:
+                                            if "contrato" in item:
+                                                item["cronograma"] = calcular_cronograma_atual(item)
+                                            break
+                                    
+                                    salvar_dados(dados_rec["itens"], dados_rec["meses_quitados"])
                                     st.session_state.itens = dados_rec["itens"]
                                     st.rerun()
+            
+            st.divider()
+            st.subheader("📜 Histórico de Antecipações")
+            historico = antecipacao_service.listar_antecipacoes(item_id=item_sel["id"] if item_sel else None)
+            
+            if historico:
+                for ant in historico:
+                    # Encontrar item correspondente para calcular número da parcela
+                    # Se item_sel está definido, usar ele; caso contrário, buscar pelo nome do item
+                    if item_sel:
+                        item_hist = item_sel
+                    else:
+                        # Buscar item pelo nome (retornado pelo backend)
+                        item_hist = next((i for i in st.session_state.itens if i["nome"] == ant.get("item_nome", "")), None)
+                    
+                    if item_hist:
+                        num_origem, total_origem = calcular_numero_parcela(ant['origem'], item_hist["inicio"], item_hist["fim"])
+                        num_destino, total_destino = calcular_numero_parcela(ant['destino'], item_hist["inicio"], item_hist["fim"])
+                        
+                        # Formatar parcela origem
+                        if num_origem is not None:
+                            texto_origem = f"{ant['origem']} (Parcela {num_origem}/{total_origem})"
+                        else:
+                            texto_origem = f"{ant['origem']} (Fora do fluxo)"
+                        
+                        # Formatar parcela destino
+                        if num_destino is not None:
+                            texto_destino = f"{ant['destino']} (Parcela {num_destino}/{total_destino})"
+                        else:
+                            texto_destino = f"{ant['destino']} (Fora do fluxo)"
+                        
+                        def fmt_brl_valor(x):
+                            return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                        
+                        valor_fmt = fmt_brl_valor(ant['valor_antecipado'])
+                        titulo = f"{texto_origem} ➔ {texto_destino} - R$ {valor_fmt} - {ant['status'].upper()}"
+                    else:
+                        valor_fmt = f"{ant['valor_antecipado']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                        titulo = f"{ant['origem']} ➔ {ant['destino']} - {valor_fmt} - {ant['status'].upper()}"
+                    
+                    # Ícone baseado no status
+                    icone = "✅" if ant['status'] == 'confirmada' else "❌"
+                    
+                    with st.expander(f"{icone} {titulo}", expanded=False):
+                        st.write(f"**Item:** {ant.get('item_nome', 'N/A')}")
+                        st.write(f"**Data:** {ant['timestamp']}")
+                        st.write(f"**Usuário:** {ant.get('usuario', 'N/A')}")
+                        
+                        if ant.get('motivo'):
+                            st.write(f"**Motivo:** {ant['motivo']}")
+                        
+                        if ant['status'] == 'confirmada':
+                            if st.button("🔄 Desfazer (Cancelar)", key=f"undo_{ant['id_antecipacao']}"):
+                                # Buscar item_id para cancelamento
+                                if item_sel:
+                                    item_id_para_cancelar = item_sel["id"]
                                 else:
-                                    st.error(f"❌ Erro: {res_undo['message']}")
-        else:
-            st.info("Nenhuma antecipação registrada.")
-
-# Adicionar novo item
-with st.expander("➕ Adicionar Novo Item de Despesa/Receita", expanded=False):
-    col_nome, col_valor = st.columns(2)
-    nome = col_nome.text_input("Nome do Item", key="add_nome")
-    valor = col_valor.number_input("Valor Mensal (R$)", min_value=0.01, step=10.0, format="%.2f", key="add_valor")
-    
-    col_tipo, col_ini, col_fim = st.columns(3)
-    tipo = col_tipo.selectbox("Tipo", ["debito", "credito"], 
-                             format_func=lambda x: "💰 Débito (Despesa)" if x == "debito" else "💵 Crédito (Receita)",
-                             key="add_tipo")
-    inicio = col_ini.selectbox("Mês Início", MESES_TODOS, key="add_inicio")
-    fim = col_fim.selectbox("Mês Fim", MESES_TODOS, index=len(MESES_TODOS)-1, key="add_fim")
-    
-    if st.button("✅ Adicionar Item", type="primary"):
-        if nome.strip():
-            novo_id = f"custom_{len([i for i in st.session_state.itens if i['id'].startswith('custom')])}"
-            st.session_state.itens.append({
-                "id": novo_id,
-                "nome": nome.strip(),
-                "valor": float(valor),
-                "tipo": tipo,
-                "inicio": inicio,
-                "fim": fim
-            })
-            salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-            st.success(f"✅ Item '{nome}' adicionado com sucesso!")
-            st.rerun()
-        else:
-            st.warning("⚠️ O nome do item não pode estar vazio.")
-
-st.divider()
-
-# Listar e editar/excluir itens
-if st.session_state.itens:
-    st.subheader("📝 Itens Cadastrados")
-    
-    for i, item in enumerate(st.session_state.itens):
-        with st.expander(f"{'💵' if item['tipo'] == 'credito' else '💰'} {item['nome']} — R$ {item['valor']:.2f}", expanded=False):
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                st.write(f"**Tipo:** {'Crédito (Receita)' if item['tipo'] == 'credito' else 'Débito (Despesa)'}")
-                
-                # Exibir período com formato "atual (original)"
-                contrato = item.get("contrato", {})
-                cronograma = item.get("cronograma", {})
-                
-                if contrato and cronograma:
-                    inicio_original = contrato["inicio_original"]
-                    fim_original = contrato["fim_original"]
-                    inicio_atual = cronograma["inicio_atual"]
-                    fim_atual = cronograma["fim_atual"]
-                    parcelas_pagas = cronograma["parcelas_pagas"]
-                    parcelas_restantes = cronograma["parcelas_restantes"]
-                    
-                    # Verificar se houve antecipações
-                    if parcelas_pagas > 0:
-                        # Formato: jan/26 (mar/26) até out/26 (dez/26)
-                        periodo_texto = (
-                            f"{inicio_atual} ({inicio_original}) até "
-                            f"{fim_atual} ({fim_original})"
-                        )
-                        st.write(f"**Período:** {periodo_texto}")
-                        st.caption(
-                            f"⚡ {parcelas_pagas} parcela(s) antecipada(s) | "
-                            f"{parcelas_restantes} restante(s) de {contrato['total_parcelas']}"
-                        )
-                    else:
-                        # Sem antecipações: exibir normal
-                        st.write(f"**Período:** {inicio_original} até {fim_original}")
-                        st.caption(f"📋 {parcelas_restantes} parcela(s) de {contrato['total_parcelas']}")
-                else:
-                    # Fallback para formato antigo
-                    st.write(f"**Período:** {item['inicio']} até {item['fim']}")
-                
-                st.write(f"**Valor Mensal:** R$ {item['valor']:.2f}")
-            
-            with col2:
-                if st.button("✏️ Editar", key=f"edit_btn_{i}"):
-                    st.session_state.editando_item = i
-                    st.rerun()
-                
-                if st.button("🗑️ Excluir", key=f"del_btn_{i}", type="secondary"):
-                    st.session_state.itens.pop(i)
-                    salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-                    st.success(f"✅ Item '{item['nome']}' excluído com sucesso!")
-                    st.rerun()
-            
-            # Botão para ver detalhes do contrato
-            if item.get("contrato") and item.get("cronograma"):
-                if st.button("📋 Ver Detalhes do Contrato", key=f"detalhes_{item['id']}"):
-                    mostrar_detalhes_contrato(item)
-else:
-    st.info("Nenhum item cadastrado. Adicione um novo item acima.")
-
-# Formulário de edição
-if "editando_item" in st.session_state:
-    idx = st.session_state.editando_item
-    if idx < len(st.session_state.itens):
-        item = st.session_state.itens[idx]
-        
-        st.divider()
-        st.subheader(f"✏️ Editando: {item['nome']}")
-        
-        with st.form("form_edicao"):
-            nome_ed = st.text_input("Nome", item["nome"])
-            valor_ed = st.number_input("Valor (R$)", value=item["valor"], min_value=0.01, step=10.0)
-            tipo_ed = st.selectbox("Tipo", ["debito", "credito"], 
-                                  index=0 if item["tipo"] == "debito" else 1,
-                                  format_func=lambda x: "💰 Débito" if x == "debito" else "💵 Crédito")
-            ini_ed = st.selectbox("Início", MESES_TODOS, index=MESES_TODOS.index(item["inicio"]))
-            fim_ed = st.selectbox("Fim", MESES_TODOS, index=MESES_TODOS.index(item["fim"]))
-            
-            col1, col2 = st.columns(2)
-            if col1.form_submit_button("💾 Salvar Alterações", type="primary"):
-                st.session_state.itens[idx] = {
-                    "id": item["id"],
-                    "nome": nome_ed,
-                    "valor": valor_ed,
-                    "tipo": tipo_ed,
-                    "inicio": ini_ed,
-                    "fim": fim_ed
-                }
-                salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-                del st.session_state.editando_item
-                st.success("✅ Item atualizado com sucesso!")
-                st.rerun()
-            
-            if col2.form_submit_button("❌ Cancelar"):
-                del st.session_state.editando_item
-                st.rerun()
-
-st.divider()
-
-# Seção: Visualização por mês
-st.header("📅 Detalhamento Mensal")
-
-# Filtro por ano
-ano_filtro = st.selectbox("🔍 Filtrar por Ano", ["Todos os Anos", "2025", "2026", "2027", "2028"])
-if ano_filtro != "Todos os Anos":
-    df_exibir = df[df["mesAno"].str.endswith(f"/{ano_filtro[2:]}")].copy()
-else:
-    df_exibir = df.copy()
-
-# Exibir cards por mês
-for _, row in df_exibir.iterrows():
-    mes = row["mesAno"]
-    quitado = mes in st.session_state.meses_quitados
-    saldo = row["total"]
-    
-    # Cabeçalho do card
-    titulo = f"{'✅' if quitado else '📅'} {mes}"
-    if quitado:
-        titulo += " — ✓ QUITADO"
-    
-    with st.expander(titulo, expanded=False):
-        # Botão para alternar QUITADO
-        if st.button("🔄 Alternar Status de Quitação", key=f"btn_{mes}"):
-            if quitado:
-                st.session_state.meses_quitados.remove(mes)
+                                    # Buscar pelo nome do item
+                                    item_encontrado = next((i for i in st.session_state.itens if i["nome"] == ant.get("item_nome", "")), None)
+                                    item_id_para_cancelar = item_encontrado["id"] if item_encontrado else None
+                                
+                                if not item_id_para_cancelar:
+                                    st.error("❌ Não foi possível identificar o item para cancelar a antecipação.")
+                                else:
+                                    res_undo = antecipacao_service.cancelar_antecipacao(
+                                        item_id=item_id_para_cancelar, 
+                                        id_antecipacao=ant["id_antecipacao"],
+                                        usuario="usuario_logado"
+                                    )
+                                    
+                                    if res_undo["success"]:
+                                        st.success("✅ Antecipação cancelada com sucesso!")
+                                        dados_rec = carregar_dados()
+                                        st.session_state.itens = dados_rec["itens"]
+                                        st.rerun()
+                                    else:
+                                        st.error(f"❌ Erro: {res_undo['message']}")
             else:
-                st.session_state.meses_quitados.append(mes)
-            salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-            st.rerun()
-        
-        # Listar itens do mês
-        itens_exibidos = False
-        for item in st.session_state.itens:
-            col_name = item["id"]
-            valor_item = row[col_name]
-            if valor_item <= 0:
-                continue
-            
-            itens_exibidos = True
-            
-            # Contador de prazo (exceto Plano de Saúde)
-            contador = ""
-            if item["nome"] != "Plano de Saúde":
-                # Usar cronograma se disponível
-                cronograma = item.get("cronograma", {})
-                mapeamento = cronograma.get("mapeamento", {})
-                
-                # Encontrar parcela original correspondente a este mês
-                parcela_info = None
-                for mes_original, info in mapeamento.items():
-                    if info["vencimento_atual"] == mes:
-                        parcela_info = info
-                        break
-                
-                if parcela_info:
-                    numero = parcela_info["numero"]
-                    total = item["contrato"]["total_parcelas"]
-                    contador = f" (Parcela {numero}/{total})"
-                else:
-                    # Fallback para cálculo antigo
-                    meses_ativos = get_meses_entre(item["inicio"], item["fim"])
-                    if mes in meses_ativos:
-                        prest_atual = meses_ativos.index(mes) + 1
-                        total_prest = len(meses_ativos)
-                        contador = f" (PRAZO {prest_atual}/{total_prest})"
-            
-            # Formatação do valor
-            sinal = "+" if item["tipo"] == "credito" else "-"
-            valor_fmt = f"{valor_item:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            st.write(f"**{item['nome']}{contador}:** {sinal} R$ {valor_fmt}")
-        
-        if not itens_exibidos:
-            st.write("_Nenhum item neste mês._")
-        
-        # Verificar se há antecipações para este mês
-        antecipacoes_mes = listar_antecipacoes_por_mes(mes)
-        
-        if antecipacoes_mes:
-            st.markdown("---")
-            st.markdown("**📥 Prestações Antecipadas para este mês:**")
-            
-            for ant in antecipacoes_mes:
-                # Formato: jan/26 ➔ nov/25 (R$ 398.57) Prestação Antecipada
-                def fmt_brl_valor(x):
-                    return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                valor_fmt = fmt_brl_valor(ant['valor'])
-                
-                # Buscar item para calcular número da parcela
-                item_ant = next((i for i in st.session_state.itens if i["nome"] == ant['item_nome']), None)
-                
-                if item_ant:
-                    num_parcela, total_parcelas = calcular_numero_parcela(ant['origem'], item_ant["inicio"], item_ant["fim"])
-                    
-                    if num_parcela is not None:
-                        texto_parcela = f" (Parcela {num_parcela}/{total_parcelas})"
-                    else:
-                        texto_parcela = " (Fora do fluxo)"
-                else:
-                    texto_parcela = ""
-                
-                # Formato: jan/26 ➔ nov/25 (R$ 398.57) Prestação Antecipada
-                st.markdown(
-                    f"• {ant['origem']}{texto_parcela} ➔ {ant['destino']} (R$ {valor_fmt}) *Prestação Antecipada*",
-                    unsafe_allow_html=True
-                )
-                
-                if ant['motivo']:
-                    st.caption(f"  Motivo: {ant['motivo']}")
-        
-        # Saldo final
-        st.markdown(f"**Saldo:** {formatar_valor_financeiro(saldo)}", unsafe_allow_html=True)
+                st.info("Nenhuma antecipação registrada.")
+    
 
-# Rodapé
-st.divider()
-st.caption("Dashboard Ana — Sistema de Gestão Financeira Pessoal | Desenvolvido com Streamlit | 🔒 Protegido por Senha")
+with aba3:
+    # Adicionar novo item
+    with st.expander("➕ Adicionar Novo Item de Despesa/Receita", expanded=False):
+        col_nome, col_valor = st.columns(2)
+        nome = col_nome.text_input("Nome do Item", key="add_nome")
+        valor = col_valor.number_input("Valor Mensal (R$)", min_value=0.01, step=10.0, format="%.2f", key="add_valor")
+        
+        col_tipo, col_ini, col_fim = st.columns(3)
+        tipo = col_tipo.selectbox("Tipo", ["debito", "credito"], 
+                                 format_func=lambda x: "💰 Débito (Despesa)" if x == "debito" else "💵 Crédito (Receita)",
+                                 key="add_tipo")
+        inicio = col_ini.selectbox("Mês Início", MESES_TODOS, key="add_inicio")
+        fim = col_fim.selectbox("Mês Fim", MESES_TODOS, index=len(MESES_TODOS)-1, key="add_fim")
+        
+        if st.button("✅ Adicionar Item", type="primary"):
+            if nome.strip():
+                novo_id = f"custom_{len([i for i in st.session_state.itens if i['id'].startswith('custom')])}"
+                st.session_state.itens.append({
+                    "id": novo_id,
+                    "nome": nome.strip(),
+                    "valor": float(valor),
+                    "tipo": tipo,
+                    "inicio": inicio,
+                    "fim": fim
+                })
+                salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
+                st.success(f"✅ Item '{nome}' adicionado com sucesso!")
+                st.rerun()
+            else:
+                st.warning("⚠️ O nome do item não pode estar vazio.")
+    
+    st.divider()
+    
+    # Listar e editar/excluir itens
+    if st.session_state.itens:
+        st.subheader("📝 Itens Cadastrados")
+        
+        for i, item in enumerate(st.session_state.itens):
+            with st.expander(f"{'💵' if item['tipo'] == 'credito' else '💰'} {item['nome']} — R$ {item['valor']:.2f}", expanded=False):
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    st.write(f"**Tipo:** {'Crédito (Receita)' if item['tipo'] == 'credito' else 'Débito (Despesa)'}")
+                    
+                    # Exibir período com formato "atual (original)"
+                    contrato = item.get("contrato", {})
+                    cronograma = item.get("cronograma", {})
+                    
+                    if contrato and cronograma:
+                        inicio_original = contrato["inicio_original"]
+                        fim_original = contrato["fim_original"]
+                        inicio_atual = cronograma["inicio_atual"]
+                        fim_atual = cronograma["fim_atual"]
+                        parcelas_pagas = cronograma["parcelas_pagas"]
+                        parcelas_restantes = cronograma["parcelas_restantes"]
+                        
+                        # Verificar se houve antecipações
+                        if parcelas_pagas > 0:
+                            # Formato: jan/26 (mar/26) até out/26 (dez/26)
+                            periodo_texto = (
+                                f"{inicio_atual} ({inicio_original}) até "
+                                f"{fim_atual} ({fim_original})"
+                            )
+                            st.write(f"**Período:** {periodo_texto}")
+                            st.caption(
+                                f"⚡ {parcelas_pagas} parcela(s) antecipada(s) | "
+                                f"{parcelas_restantes} restante(s) de {contrato['total_parcelas']}"
+                            )
+                        else:
+                            # Sem antecipações: exibir normal
+                            st.write(f"**Período:** {inicio_original} até {fim_original}")
+                            st.caption(f"📋 {parcelas_restantes} parcela(s) de {contrato['total_parcelas']}")
+                    else:
+                        # Fallback para formato antigo
+                        st.write(f"**Período:** {item['inicio']} até {item['fim']}")
+                    
+                    st.write(f"**Valor Mensal:** R$ {item['valor']:.2f}")
+                
+                with col2:
+                    if st.button("✏️ Editar", key=f"edit_btn_{i}"):
+                        st.session_state.editando_item = i
+                        st.rerun()
+                    
+                    if st.button("🗑️ Excluir", key=f"del_btn_{i}", type="secondary"):
+                        st.session_state.itens.pop(i)
+                        salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
+                        st.success(f"✅ Item '{item['nome']}' excluído com sucesso!")
+                        st.rerun()
+                
+                # Botão para ver detalhes do contrato
+                if item.get("contrato") and item.get("cronograma"):
+                    if st.button("📋 Ver Detalhes do Contrato", key=f"detalhes_{item['id']}"):
+                        mostrar_detalhes_contrato(item)
+    else:
+        st.info("Nenhum item cadastrado. Adicione um novo item acima.")
+    
+    # Formulário de edição
+    if "editando_item" in st.session_state:
+        idx = st.session_state.editando_item
+        if idx < len(st.session_state.itens):
+            item = st.session_state.itens[idx]
+            
+            st.divider()
+            st.subheader(f"✏️ Editando: {item['nome']}")
+            
+            with st.form("form_edicao"):
+                nome_ed = st.text_input("Nome", item["nome"])
+                valor_ed = st.number_input("Valor (R$)", value=item["valor"], min_value=0.01, step=10.0)
+                tipo_ed = st.selectbox("Tipo", ["debito", "credito"], 
+                                      index=0 if item["tipo"] == "debito" else 1,
+                                      format_func=lambda x: "💰 Débito" if x == "debito" else "💵 Crédito")
+                ini_ed = st.selectbox("Início", MESES_TODOS, index=MESES_TODOS.index(item["inicio"]))
+                fim_ed = st.selectbox("Fim", MESES_TODOS, index=MESES_TODOS.index(item["fim"]))
+                
+                col1, col2 = st.columns(2)
+                if col1.form_submit_button("💾 Salvar Alterações", type="primary"):
+                    st.session_state.itens[idx] = {
+                        "id": item["id"],
+                        "nome": nome_ed,
+                        "valor": valor_ed,
+                        "tipo": tipo_ed,
+                        "inicio": ini_ed,
+                        "fim": fim_ed
+                    }
+                    salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
+                    del st.session_state.editando_item
+                    st.success("✅ Item atualizado com sucesso!")
+                    st.rerun()
+                
+                if col2.form_submit_button("❌ Cancelar"):
+                    del st.session_state.editando_item
+                    st.rerun()
+    
+    st.divider()
+    
+    # Seção: Visualização por mês
+    st.header("📅 Detalhamento Mensal")
+    
+    # Filtro por ano
+    ano_filtro = st.selectbox("🔍 Filtrar por Ano", ["Todos os Anos", "2025", "2026", "2027", "2028"])
+    if ano_filtro != "Todos os Anos":
+        df_exibir = df[df["mesAno"].str.endswith(f"/{ano_filtro[2:]}")].copy()
+    else:
+        df_exibir = df.copy()
+    
+    # Exibir cards por mês
+    for _, row in df_exibir.iterrows():
+        mes = row["mesAno"]
+        quitado = mes in st.session_state.meses_quitados
+        saldo = row["total"]
+        
+        # Cabeçalho do card
+        titulo = f"{'✅' if quitado else '📅'} {mes}"
+        if quitado:
+            titulo += " — ✓ QUITADO"
+        
+        with st.expander(titulo, expanded=False):
+            # Botão para alternar QUITADO
+            if st.button("🔄 Alternar Status de Quitação", key=f"btn_{mes}"):
+                if quitado:
+                    st.session_state.meses_quitados.remove(mes)
+                else:
+                    st.session_state.meses_quitados.append(mes)
+                salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
+                st.rerun()
+            
+            # Listar itens do mês
+            itens_exibidos = False
+            for item in st.session_state.itens:
+                col_name = item["id"]
+                valor_item = row[col_name]
+                if valor_item <= 0:
+                    continue
+                
+                itens_exibidos = True
+                
+                # Contador de prazo (exceto Plano de Saúde)
+                contador = ""
+                if item["nome"] != "Plano de Saúde":
+                    # Usar cronograma se disponível
+                    cronograma = item.get("cronograma", {})
+                    mapeamento = cronograma.get("mapeamento", {})
+                    
+                    # Encontrar parcela original correspondente a este mês
+                    parcela_info = None
+                    for mes_original, info in mapeamento.items():
+                        if info["vencimento_atual"] == mes:
+                            parcela_info = info
+                            break
+                    
+                    if parcela_info:
+                        numero = parcela_info["numero"]
+                        total = item["contrato"]["total_parcelas"]
+                        contador = f" (Parcela {numero}/{total})"
+                    else:
+                        # Fallback para cálculo antigo
+                        meses_ativos = get_meses_entre(item["inicio"], item["fim"])
+                        if mes in meses_ativos:
+                            prest_atual = meses_ativos.index(mes) + 1
+                            total_prest = len(meses_ativos)
+                            contador = f" (PRAZO {prest_atual}/{total_prest})"
+                
+                # Formatação do valor
+                sinal = "+" if item["tipo"] == "credito" else "-"
+                valor_fmt = f"{valor_item:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                st.write(f"**{item['nome']}{contador}:** {sinal} R$ {valor_fmt}")
+            
+            if not itens_exibidos:
+                st.write("_Nenhum item neste mês._")
+            
+            # Verificar se há antecipações para este mês
+            antecipacoes_mes = listar_antecipacoes_por_mes(mes)
+            
+            if antecipacoes_mes:
+                st.markdown("---")
+                st.markdown("**📥 Prestações Antecipadas para este mês:**")
+                
+                for ant in antecipacoes_mes:
+                    # Formato: jan/26 ➔ nov/25 (R$ 398.57) Prestação Antecipada
+                    def fmt_brl_valor(x):
+                        return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    valor_fmt = fmt_brl_valor(ant['valor'])
+                    
+                    # Buscar item para calcular número da parcela
+                    item_ant = next((i for i in st.session_state.itens if i["nome"] == ant['item_nome']), None)
+                    
+                    if item_ant:
+                        num_parcela, total_parcelas = calcular_numero_parcela(ant['origem'], item_ant["inicio"], item_ant["fim"])
+                        
+                        if num_parcela is not None:
+                            texto_parcela = f" (Parcela {num_parcela}/{total_parcelas})"
+                        else:
+                            texto_parcela = " (Fora do fluxo)"
+                    else:
+                        texto_parcela = ""
+                    
+                    # Formato: jan/26 ➔ nov/25 (R$ 398.57) Prestação Antecipada
+                    st.markdown(
+                        f"• {ant['origem']}{texto_parcela} ➔ {ant['destino']} (R$ {valor_fmt}) *Prestação Antecipada*",
+                        unsafe_allow_html=True
+                    )
+                    
+                    if ant['motivo']:
+                        st.caption(f"  Motivo: {ant['motivo']}")
+            
+            # Saldo final
+            st.markdown(f"**Saldo:** {formatar_valor_financeiro(saldo)}", unsafe_allow_html=True)
+    
+    # Rodapé
+    st.divider()
+    st.caption("Dashboard Ana — Sistema de Gestão Financeira Pessoal | Desenvolvido com Streamlit | 🔒 Protegido por Senha")
