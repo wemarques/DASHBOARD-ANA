@@ -96,49 +96,28 @@ class AntecipacaoService:
             if ant.get("status") == "confirmada"
         ]
         
-        # Calcular novo fim usando o FIM ORIGINAL do contrato como base
-        # Isso permite restaurar o fluxo quando uma antecipação é cancelada
+        # FIX: Nunca encurtar o fluxo. Sempre restaurar o fim original.
+        # Isso garante que parcelas futuras não sumam quando uma intermediária é antecipada.
         contrato = item_found.get("contrato", {})
         fim_original = contrato.get("fim_original")
         
         if not fim_original:
-            # Fallback para itens legados sem contrato (comportamento antigo)
-            fim_original = item_found["fim"]
-            # Se já foi encurtado antes e não temos o original, não conseguimos restaurar perfeitamente
-            # Mas evita erro.
-            
-        inicio = item_found["inicio"]
-        # fim_atual = item_found["fim"] # Não usamos mais o fim atual como base
-        
-        try:
-            idx_inicio = MESES_TODOS.index(inicio)
-            idx_fim_original = MESES_TODOS.index(fim_original)
-        except ValueError:
-            return {"success": False, "message": "Meses inválidos"}
-        
-        # Encurtar: subtrair número de antecipações do FIM ORIGINAL
-        meses_encurtados = len(antecipacoes_confirmadas)
-        novo_idx_fim = idx_fim_original - meses_encurtados
-        
-        # Validar que não fica menor que o início
-        if novo_idx_fim < idx_inicio:
-            novo_idx_fim = idx_inicio
-        
-        novo_fim = MESES_TODOS[novo_idx_fim]
-        
-        # Se nada mudou, retornar sucesso sem salvar (otimização)
-        if novo_fim == item_found["fim"]:
-             return {
-                "success": True,
-                "novo_fim": novo_fim,
-                "meses_encurtados": meses_encurtados,
-                "fim_anterior": item_found["fim"],
-                "message": "Fim inalterado"
+             # Fallback para itens legados sem contrato
+             return {"success": True, "message": "Sem contrato para restaurar."}
+
+        # Restaurar fim original
+        if item_found["fim"] != fim_original:
+            fim_anterior = item_found["fim"]
+            item_found["fim"] = fim_original
+            self._save_data(data)
+            return {
+                "success": True, 
+                "novo_fim": fim_original, 
+                "fim_anterior": fim_anterior,
+                "message": "Fluxo restaurado para original"
             }
-        
-        # Atualizar item
-        fim_anterior = item_found["fim"]
-        item_found["fim"] = novo_fim
+            
+        return {"success": True, "message": "Fim já é original"}
         
         # Salvar
         self._save_data(data)
