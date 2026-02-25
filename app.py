@@ -407,6 +407,36 @@ def carregar_dados():
                     for i, item in enumerate(itens_personalizados):
                         item["id"] = f"custom_{i}"
                     return {"itens": itens_padrao + itens_personalizados, "meses_quitados": dados.get("meses_quitados", MESES_TODOS[:10])}
+                
+                # Fix: Garantir que Bancorbras Vila Galé exista
+                tem_vila_gale = any(i.get("nome") == "Bancorbras Vila Galé" for i in dados.get("itens", []))
+                if not tem_vila_gale and "itens" in dados:
+                    vila_gale = {
+                        "id": "bancorbrasVilaGale",
+                        "nome": "Bancorbras Vila Galé",
+                        "valor": 398.57,
+                        "tipo": "debito",
+                        "inicio": "jan/26",
+                        "fim": "dez/26",
+                        "antecipacoes": [],
+                        "contrato": {
+                            "inicio_original": "jan/26",
+                            "fim_original": "dez/26",
+                            "total_parcelas": 12,
+                            "valor_parcela": 398.57
+                        }
+                    }
+                    try:
+                        vila_gale["cronograma"] = calcular_cronograma_atual(vila_gale)
+                    except:
+                        pass
+                    dados["itens"].append(vila_gale)
+                    # Salvar a correção
+                    try:
+                        salvar_dados(dados["itens"], dados["meses_quitados"])
+                    except:
+                        pass
+
                 return dados
         except Exception as e:
             st.error(f"Erro ao carregar dados: {e}")
@@ -417,7 +447,8 @@ def carregar_dados():
             {"id": "planoSaude", "nome": "Plano de Saúde", "valor": 1518.93, "inicio": "jan/25", "fim": "dez/28", "tipo": "debito"},
             {"id": "viagemNordeste", "nome": "Viagem Nordeste", "valor": 206.50, "inicio": "set/25", "fim": "jun/26", "tipo": "debito"},
             {"id": "geladeira", "nome": "Geladeira", "valor": 152.48, "inicio": "jul/25", "fim": "jun/27", "tipo": "debito"},
-            {"id": "ferro", "nome": "Ferro", "valor": 219.99, "inicio": "set/25", "fim": "dez/26", "tipo": "debito"}
+            {"id": "ferro", "nome": "Ferro", "valor": 219.99, "inicio": "set/25", "fim": "dez/26", "tipo": "debito"},
+            {"id": "bancorbrasVilaGale", "nome": "Bancorbras Vila Galé", "valor": 398.57, "inicio": "jan/26", "fim": "dez/26", "tipo": "debito"}
         ],
         "meses_quitados": MESES_TODOS[:10]
     }
