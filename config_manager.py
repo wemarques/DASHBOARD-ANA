@@ -30,9 +30,14 @@ def load_feature_flags():
         env_var_name = flag_name.upper()
         
         # Prioridade 0: Streamlit Secrets (Cloud)
-        if hasattr(st, "secrets") and env_var_name in st.secrets:
-            val = str(st.secrets[env_var_name]).lower()
-            return val in ("true", "1", "yes", "on")
+        try:
+            if hasattr(st, "secrets") and env_var_name in st.secrets:
+                val = str(st.secrets[env_var_name]).lower()
+                return val in ("true", "1", "yes", "on")
+        except FileNotFoundError:
+            pass # Secrets file not found, continue to next check
+        except Exception:
+            pass # Other errors with secrets, continue
 
         # Prioridade 1: Variável de ambiente direta
         if env_var_name in os.environ:
