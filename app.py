@@ -118,6 +118,53 @@ with st.sidebar:
     if st.button("🚪 Sair", use_container_width=True):
         st.session_state.autenticado = False
         st.rerun()
+    
+    st.divider()
+    
+    # Backup e Restore Manual (para contornar falhas de persistência no Cloud)
+    st.markdown("### 💾 Backup de Dados")
+    
+    # Ler dados atuais para download
+    try:
+        if os.path.exists("dados_dashboard_ana.json"):
+            with open("dados_dashboard_ana.json", "r", encoding="utf-8") as f:
+                dados_json = f.read()
+            
+            st.download_button(
+                label="⬇️ Baixar Backup",
+                data=dados_json,
+                file_name=f"backup_dashboard_ana_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
+                mime="application/json",
+                help="Clique para salvar seus dados (quitações, itens, antecipações) no seu computador."
+            )
+    except Exception as e:
+        st.error(f"Erro ao gerar backup: {e}")
+        
+    st.markdown("### ⬆️ Restaurar Dados")
+    uploaded_file = st.file_uploader("Carregar arquivo JSON", type=["json"], key="restore_uploader")
+    
+    if uploaded_file is not None:
+        if st.button("Confirmar Restauração", type="primary"):
+            try:
+                dados_novos = json.load(uploaded_file)
+                # Validação básica
+                if "itens" in dados_novos and "meses_quitados" in dados_novos:
+                    with open("dados_dashboard_ana.json", "w", encoding="utf-8") as f:
+                        json.dump(dados_novos, f, ensure_ascii=False, indent=2)
+                    
+                    # Tentar salvar no GitHub também se possível
+                    try:
+                        push_to_github(dados_novos, commit_message="Restore backup manual")
+                    except:
+                        pass
+                        
+                    st.success("✅ Dados restaurados com sucesso! O app será recarregado.")
+                    st.rerun()
+                else:
+                    st.error("❌ Arquivo inválido: Formato JSON incorreto.")
+            except Exception as e:
+                st.error(f"❌ Erro ao processar arquivo: {e}")
+
     st.divider()
 
 # Caminho do arquivo de dados
