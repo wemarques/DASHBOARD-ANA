@@ -96,28 +96,45 @@ class AntecipacaoService:
             if ant.get("status") == "confirmada"
         ]
         
-        if not antecipacoes_confirmadas:
-            return {"success": False, "message": "Nenhuma antecipação confirmada"}
+        # Calcular novo fim usando o FIM ORIGINAL do contrato como base
+        # Isso permite restaurar o fluxo quando uma antecipação é cancelada
+        contrato = item_found.get("contrato", {})
+        fim_original = contrato.get("fim_original")
         
-        # Calcular novo fim
+        if not fim_original:
+            # Fallback para itens legados sem contrato (comportamento antigo)
+            fim_original = item_found["fim"]
+            # Se já foi encurtado antes e não temos o original, não conseguimos restaurar perfeitamente
+            # Mas evita erro.
+            
         inicio = item_found["inicio"]
-        fim_atual = item_found["fim"]
+        # fim_atual = item_found["fim"] # Não usamos mais o fim atual como base
         
         try:
             idx_inicio = MESES_TODOS.index(inicio)
-            idx_fim = MESES_TODOS.index(fim_atual)
+            idx_fim_original = MESES_TODOS.index(fim_original)
         except ValueError:
             return {"success": False, "message": "Meses inválidos"}
         
-        # Encurtar: subtrair número de antecipações
+        # Encurtar: subtrair número de antecipações do FIM ORIGINAL
         meses_encurtados = len(antecipacoes_confirmadas)
-        novo_idx_fim = idx_fim - meses_encurtados
+        novo_idx_fim = idx_fim_original - meses_encurtados
         
         # Validar que não fica menor que o início
         if novo_idx_fim < idx_inicio:
             novo_idx_fim = idx_inicio
         
         novo_fim = MESES_TODOS[novo_idx_fim]
+        
+        # Se nada mudou, retornar sucesso sem salvar (otimização)
+        if novo_fim == item_found["fim"]:
+             return {
+                "success": True,
+                "novo_fim": novo_fim,
+                "meses_encurtados": meses_encurtados,
+                "fim_anterior": item_found["fim"],
+                "message": "Fim inalterado"
+            }
         
         # Atualizar item
         fim_anterior = item_found["fim"]
@@ -243,5 +260,8 @@ class AntecipacaoService:
 
         self._save_data(data)
         self._log_audit("CANCELAR_ANTECIPACAO", usuario, {"id_antecipacao": id_antecipacao, "item_id": item_id})
+
+        # Recalcular fluxo do item para restaurar meses se necessário
+        self.encurtar_fluxo_item(item_id)
 
         return {"success": True}
