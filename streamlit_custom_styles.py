@@ -117,9 +117,23 @@ def aplicar_estilos_customizados():
     h2 { font-size: 1.5rem !important; font-weight: 600 !important; }
     h3 { font-size: 1.125rem !important; font-weight: 600 !important; }
 
-    p, .stMarkdown p, span, label, .stText {
+    p, .stMarkdown p, label, .stText {
         font-family: var(--font-body) !important;
         color: var(--text-body) !important;
+    }
+
+    /* Apply body font to spans but preserve Material Symbols/Icons */
+    span:not(.material-symbols-rounded):not(.material-icons) {
+        font-family: var(--font-body);
+        color: var(--text-body);
+    }
+
+    /* Preserve Material Symbols font for Streamlit UI icons (expander arrows, etc.) */
+    .material-symbols-rounded,
+    .material-icons,
+    [data-testid="stExpanderToggleIcon"],
+    [data-testid="stExpander"] summary > div > span:first-child {
+        font-family: 'Material Symbols Rounded', 'Material Icons' !important;
     }
 
     .stCaption, [data-testid="stCaptionContainer"] p {
