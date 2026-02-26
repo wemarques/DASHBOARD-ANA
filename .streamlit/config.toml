@@ -1,11 +1,9 @@
 [theme]
-# Cores primárias baseadas em OKLCH
-primaryColor = "#3333CC"        # Azul escuro profissional
-backgroundColor = "#FCFCFE"     # Branco levemente azulado
-secondaryBackgroundColor = "#F5F5F7"  # Cinza muito claro
-textColor = "#1A1A1F"           # Preto azulado
-
-# Fonte
+# Paleta Marinho + Dourado (Minimalista Luxuoso)
+primaryColor = "#C9A96E"
+backgroundColor = "#F8F6F3"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0A1628"
 font = "sans serif"
 
 [server]
