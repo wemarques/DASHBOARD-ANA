@@ -11,7 +11,7 @@ import hashlib
 import config_manager  # Novo gerenciador de config
 from backend_antecipacao import AntecipacaoService  # Backend Antecipação
 from github_integration import push_to_github  # Integração GitHub
-from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS
+from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS, get_plotly_layout_theme
 from gestao_executiva import exibir_gestao_executiva, exibir_resumo_executivo  # Gestão Executiva
 
 # Configuração da página
@@ -54,9 +54,28 @@ def verificar_senha():
     
     # Tela de login
     st.markdown("""
-    <div style='text-align: center; padding: 50px;'>
-        <h1>🔐 Dashboard Ana</h1>
-        <p style='color: var(--muted-foreground);'>Sistema de Gestão Financeira Pessoal</p>
+    <div style='
+        text-align: center;
+        padding: 3rem 2rem;
+        background: linear-gradient(135deg, #0A1628 0%, #162036 100%);
+        border-radius: 20px;
+        margin: 2rem auto;
+        max-width: 500px;
+        box-shadow: 0 10px 25px rgba(10, 22, 40, 0.15);
+    '>
+        <h1 style='
+            color: #FFFFFF !important;
+            font-family: Playfair Display, serif !important;
+            font-size: 2rem !important;
+            margin-bottom: 0.5rem !important;
+        '>Dashboard Ana</h1>
+        <p style='
+            color: #C9A96E !important;
+            font-family: DM Sans, sans-serif !important;
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        '>Gestão Financeira Pessoal</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -76,10 +95,10 @@ def verificar_senha():
         col_btn1, col_btn2 = st.columns(2)
         
         # Botão de Entrar
-        entrar_pressionado = col_btn1.button("🔓 Entrar", type="primary", use_container_width=True)
-        
+        entrar_pressionado = col_btn1.button("Entrar", type="primary", use_container_width=True)
+
         # Botão de Ajuda
-        ajuda_pressionado = col_btn2.button("ℹ️ Ajuda", use_container_width=True)
+        ajuda_pressionado = col_btn2.button("Ajuda", use_container_width=True)
         
         # Processar ações APÓS os botões serem renderizados
         if entrar_pressionado:
@@ -103,7 +122,7 @@ def verificar_senha():
             st.info("💡 **Senha padrão**: ana2025\n\nPara alterar a senha, edite o arquivo `app.py` ou entre em contato com o administrador.")
     
     st.markdown("---")
-    st.caption("🔒 Acesso protegido por senha | Dashboard Ana © 2026")
+    st.caption("Acesso protegido por senha | Dashboard Ana © 2026")
     
     return False
 
@@ -115,15 +134,16 @@ if not verificar_senha():
 # Botão de Logout no sidebar
 # ========================================
 with st.sidebar:
-    st.markdown("### 👤 Usuário Autenticado")
-    if st.button("🚪 Sair", use_container_width=True):
+    st.markdown("<p style='font-family: DM Sans, sans-serif; color: rgba(255,255,255,0.5) !important; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.25rem;'>Conta</p>", unsafe_allow_html=True)
+    st.markdown("### Usuário Autenticado")
+    if st.button("Sair", use_container_width=True):
         st.session_state.autenticado = False
         st.rerun()
     
     st.divider()
     
     # Backup e Restore Manual (para contornar falhas de persistência no Cloud)
-    st.markdown("### 💾 Backup de Dados")
+    st.markdown("### Backup de Dados")
     
     # Ler dados atuais para download
     try:
@@ -132,7 +152,7 @@ with st.sidebar:
                 dados_json = f.read()
             
             st.download_button(
-                label="⬇️ Baixar Backup",
+                label="Baixar Backup",
                 data=dados_json,
                 file_name=f"backup_dashboard_ana_{datetime.now().strftime('%Y%m%d_%H%M')}.json",
                 mime="application/json",
@@ -141,7 +161,7 @@ with st.sidebar:
     except Exception as e:
         st.error(f"Erro ao gerar backup: {e}")
         
-    st.markdown("### ⬆️ Restaurar Dados")
+    st.markdown("### Restaurar Dados")
     uploaded_file = st.file_uploader("Carregar arquivo JSON", type=["json"], key="restore_uploader")
     
     if uploaded_file is not None:
@@ -344,7 +364,7 @@ def mostrar_detalhes_contrato(item):
         return
     
     st.markdown("---")
-    st.markdown("### 📋 Detalhes do Contrato")
+    st.markdown("### Detalhes do Contrato")
     
     # Contrato Original
     st.markdown("**CONTRATO ORIGINAL**")
@@ -565,7 +585,23 @@ def calcular_dataframe():
 # ========================================
 # 5. Interface do usuário
 # ========================================
-st.title("📊 Dashboard Ana - Gestão Financeira")
+st.markdown("""
+<div style='margin-bottom: 0.5rem;'>
+    <h1 style='
+        font-family: Playfair Display, serif !important;
+        color: #0A1628 !important;
+        font-size: 1.875rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 0.25rem !important;
+    '>Dashboard Ana</h1>
+    <p style='
+        font-family: DM Sans, sans-serif;
+        color: #6B7280;
+        font-size: 0.8rem;
+        letter-spacing: 0.04em;
+    '>Gestão Financeira Pessoal</p>
+</div>
+""", unsafe_allow_html=True)
 st.caption(f"Atualizado em {datetime.now().strftime('%d/%m/%Y %H:%M')} — valores em R$")
 
 # ========================================
@@ -576,14 +612,14 @@ df = calcular_dataframe()
 # ========================================
 # NAVEGAÇÃO POR ABAS
 # ========================================
-aba1, aba2, aba3, aba4 = st.tabs(["📊 Gestão Executiva", "📅 Detalhamento Mensal", "🛠️ Gerenciar Itens", "⚡ Antecipar Parcelas"])
+aba1, aba2, aba3, aba4 = st.tabs(["Gestão Executiva", "Detalhamento Mensal", "Gerenciar Itens", "Antecipar Parcelas"])
 
 with aba1:
     # === GESTÃO EXECUTIVA - RESULTADO MENSAL ===
-    st.header("📊 Gestão Executiva - Resultado Mensal")
+    st.header("Gestão Executiva — Resultado Mensal")
     
     # Resumo Executivo Rápido
-    st.subheader("📈 Resumo Executivo")
+    st.subheader("Resumo Executivo")
     exibir_resumo_executivo(st.session_state.itens, st.session_state.meses_quitados, df)
     
     st.divider()
@@ -603,7 +639,7 @@ with aba1:
             continue
     
     mes_selecionado = st.selectbox(
-        "📅 Selecione o mês para análise executiva detalhada:",
+        "Selecione o mês para análise executiva detalhada:",
         meses_disponiveis,
         index=meses_disponiveis.index(mes_default) if mes_default in meses_disponiveis else 0,
         key="mes_executivo"
@@ -614,7 +650,7 @@ with aba1:
 
 with aba2:
     # === DETALHAMENTO MENSAL (CONTEÚDO EXISTENTE) ===
-    st.header("📅 Detalhamento Mensal")
+    st.header("Detalhamento Mensal")
     total_debitos = 0
     total_creditos = 0
     
@@ -636,17 +672,17 @@ with aba2:
     
     # Métricas principais
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("💰 Total Débitos", fmt_brl(total_debitos), delta=None, delta_color="inverse")
-    col2.metric("💵 Total Créditos", fmt_brl(total_creditos), delta=None)
-    col3.metric("📈 Saldo Total", fmt_brl(saldo), delta=None, delta_color="normal" if saldo >= 0 else "inverse")
-    col4.metric("✅ Meses Quitados", f"{meses_quit}/{total_meses}", delta=f"{(meses_quit/total_meses*100):.1f}%")
+    col1.metric("TOTAL DÉBITOS", fmt_brl(total_debitos), delta=None, delta_color="inverse")
+    col2.metric("TOTAL CRÉDITOS", fmt_brl(total_creditos), delta=None)
+    col3.metric("SALDO TOTAL", fmt_brl(saldo), delta=None, delta_color="normal" if saldo >= 0 else "inverse")
+    col4.metric("MESES QUITADOS", f"{meses_quit}/{total_meses}", delta=f"{(meses_quit/total_meses*100):.1f}%")
     
     st.divider()
     
     col_left, col_right = st.columns(2)
     
     with col_left:
-        st.subheader("📊 Evolução Mensal do Saldo")
+        st.subheader("Evolução Mensal do Saldo")
         # Preparar dados para o gráfico
         df_grafico = df[["mesAno", "total"]].copy()
         df_grafico["cor"] = df_grafico["total"].apply(lambda x: "Positivo" if x >= 0 else "Negativo")
@@ -660,11 +696,12 @@ with aba2:
             labels={"mesAno": "Mês/Ano", "total": "Saldo (R$)"},
             title="Saldo Mensal (2025-2028)"
         )
+        fig_evolucao.update_layout(**get_plotly_layout_theme())
         fig_evolucao.update_layout(showlegend=False, height=400)
         st.plotly_chart(fig_evolucao, use_container_width=True)
     
     with col_right:
-        st.subheader("🥧 Distribuição de Despesas")
+        st.subheader("Distribuição de Despesas")
         # Calcular despesas por item
         despesas_por_item = []
         for item in st.session_state.itens:
@@ -677,13 +714,20 @@ with aba2:
         if despesas_por_item:
             df_despesas = pd.DataFrame(despesas_por_item)
             fig_pizza = px.pie(
-                df_despesas, 
-                values="Valor", 
+                df_despesas,
+                values="Valor",
                 names="Item",
                 title="Proporção de Despesas por Item",
-                hole=0.4
+                hole=0.45,
+                color_discrete_sequence=['#0A1628', '#162036', '#1C2940', '#2A3A52', '#C9A96E', '#E8D5B0', '#374151', '#6B7280']
             )
-            fig_pizza.update_traces(textposition='inside', textinfo='percent+label')
+            fig_pizza.update_traces(
+                textposition='inside',
+                textinfo='percent+label',
+                textfont=dict(family='DM Sans, sans-serif', size=11),
+                marker=dict(line=dict(color='#FFFFFF', width=2))
+            )
+            fig_pizza.update_layout(**get_plotly_layout_theme())
             fig_pizza.update_layout(height=400)
             st.plotly_chart(fig_pizza, use_container_width=True)
         else:
@@ -692,7 +736,7 @@ with aba2:
     st.divider()
     
     # Tabela de itens
-    st.subheader("📋 Resumo de Itens Cadastrados")
+    st.subheader("Resumo de Itens Cadastrados")
     
     if st.session_state.itens:
         dados_tabela = []
@@ -712,7 +756,7 @@ with aba2:
             
             dados_tabela.append({
                 "Item": item["nome"],
-                "Tipo": "💵 Crédito" if item["tipo"] == "credito" else "💰 Débito",
+                "Tipo": "Crédito" if item["tipo"] == "credito" else "Débito",
                 "Valor Mensal": fmt_brl(item["valor"]),
                 "Período": f"{item['inicio']} - {item['fim']}",
                 "Progresso": progresso,
@@ -905,7 +949,7 @@ with aba4:
                                     st.rerun()
             
             st.divider()
-            st.subheader("📜 Histórico de Antecipações")
+            st.subheader("Histórico de Antecipações")
             historico = antecipacao_service.listar_antecipacoes(item_id=item_sel["id"] if item_sel else None)
             
             if historico:
@@ -999,12 +1043,12 @@ with aba3:
         
         col_tipo, col_ini, col_fim = st.columns(3)
         tipo = col_tipo.selectbox("Tipo", ["debito", "credito"], 
-                                 format_func=lambda x: "💰 Débito (Despesa)" if x == "debito" else "💵 Crédito (Receita)",
+                                 format_func=lambda x: "Débito (Despesa)" if x == "debito" else "Crédito (Receita)",
                                  key="add_tipo")
         inicio = col_ini.selectbox("Mês Início", MESES_TODOS, key="add_inicio")
         fim = col_fim.selectbox("Mês Fim", MESES_TODOS, index=len(MESES_TODOS)-1, key="add_fim")
         
-        if st.button("✅ Adicionar Item", type="primary"):
+        if st.button("Adicionar Item", type="primary"):
             if nome.strip():
                 novo_id = f"custom_{len([i for i in st.session_state.itens if i['id'].startswith('custom')])}"
                 st.session_state.itens.append({
@@ -1025,10 +1069,10 @@ with aba3:
     
     # Listar e editar/excluir itens
     if st.session_state.itens:
-        st.subheader("📝 Itens Cadastrados")
+        st.subheader("Itens Cadastrados")
         
         for i, item in enumerate(st.session_state.itens):
-            with st.expander(f"{'💵' if item['tipo'] == 'credito' else '💰'} {item['nome']} — R$ {item['valor']:.2f}", expanded=False):
+            with st.expander(f"{item['nome']} — R$ {item['valor']:.2f}", expanded=False):
                 col1, col2 = st.columns([3, 1])
                 
                 with col1:
@@ -1069,11 +1113,11 @@ with aba3:
                     st.write(f"**Valor Mensal:** R$ {item['valor']:.2f}")
                 
                 with col2:
-                    if st.button("✏️ Editar", key=f"edit_btn_{i}"):
+                    if st.button("Editar", key=f"edit_btn_{i}"):
                         st.session_state.editando_item = i
                         st.rerun()
                     
-                    if st.button("🗑️ Excluir", key=f"del_btn_{i}", type="secondary"):
+                    if st.button("Excluir", key=f"del_btn_{i}", type="secondary"):
                         st.session_state.itens.pop(i)
                         salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
                         st.success(f"✅ Item '{item['nome']}' excluído com sucesso!")
@@ -1081,7 +1125,7 @@ with aba3:
                 
                 # Botão para ver detalhes do contrato
                 if item.get("contrato") and item.get("cronograma"):
-                    if st.button("📋 Ver Detalhes do Contrato", key=f"detalhes_{item['id']}"):
+                    if st.button("Ver Detalhes do Contrato", key=f"detalhes_{item['id']}"):
                         mostrar_detalhes_contrato(item)
     else:
         st.info("Nenhum item cadastrado. Adicione um novo item acima.")
@@ -1093,19 +1137,19 @@ with aba3:
             item = st.session_state.itens[idx]
             
             st.divider()
-            st.subheader(f"✏️ Editando: {item['nome']}")
+            st.subheader(f"Editando: {item['nome']}")
             
             with st.form("form_edicao"):
                 nome_ed = st.text_input("Nome", item["nome"])
                 valor_ed = st.number_input("Valor (R$)", value=item["valor"], min_value=0.01, step=10.0)
                 tipo_ed = st.selectbox("Tipo", ["debito", "credito"], 
                                       index=0 if item["tipo"] == "debito" else 1,
-                                      format_func=lambda x: "💰 Débito" if x == "debito" else "💵 Crédito")
+                                      format_func=lambda x: "Débito" if x == "debito" else "Crédito")
                 ini_ed = st.selectbox("Início", MESES_TODOS, index=MESES_TODOS.index(item["inicio"]))
                 fim_ed = st.selectbox("Fim", MESES_TODOS, index=MESES_TODOS.index(item["fim"]))
                 
                 col1, col2 = st.columns(2)
-                if col1.form_submit_button("💾 Salvar Alterações", type="primary"):
+                if col1.form_submit_button("Salvar Alterações", type="primary"):
                     st.session_state.itens[idx] = {
                         "id": item["id"],
                         "nome": nome_ed,
@@ -1119,17 +1163,17 @@ with aba3:
                     st.success("✅ Item atualizado com sucesso!")
                     st.rerun()
                 
-                if col2.form_submit_button("❌ Cancelar"):
+                if col2.form_submit_button("Cancelar"):
                     del st.session_state.editando_item
                     st.rerun()
     
     st.divider()
     
     # Seção: Visualização por mês
-    st.header("📅 Detalhamento Mensal")
+    st.header("Detalhamento Mensal")
     
     # Filtro por ano
-    ano_filtro = st.selectbox("🔍 Filtrar por Ano", ["Todos os Anos", "2025", "2026", "2027", "2028"])
+    ano_filtro = st.selectbox("Filtrar por Ano", ["Todos os Anos", "2025", "2026", "2027", "2028"])
     if ano_filtro != "Todos os Anos":
         df_exibir = df[df["mesAno"].str.endswith(f"/{ano_filtro[2:]}")].copy()
     else:
@@ -1240,4 +1284,4 @@ with aba3:
     
     # Rodapé
     st.divider()
-    st.caption("Dashboard Ana — Sistema de Gestão Financeira Pessoal | Desenvolvido com Streamlit | 🔒 Protegido por Senha")
+    st.caption("Dashboard Ana — Sistema de Gestão Financeira Pessoal | Desenvolvido com Streamlit | Protegido por Senha")
