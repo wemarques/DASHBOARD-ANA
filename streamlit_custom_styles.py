@@ -42,6 +42,7 @@ def aplicar_estilos_customizados():
     :root {
         /* Navy */
         --navy-deep: #0A1628;
+        --navy-button: #1C2B4A;
         --navy-medium: #162036;
         --navy-light: #1C2940;
         --navy-muted: #2A3A52;
@@ -270,7 +271,7 @@ def aplicar_estilos_customizados():
        BUTTONS
        ======================================== */
     .stButton > button {
-        background-color: var(--navy-deep) !important;
+        background-color: var(--navy-button) !important;
         color: #FFFFFF !important;
         border: none !important;
         border-radius: var(--radius-md) !important;
@@ -285,6 +286,21 @@ def aplicar_estilos_customizados():
     .stButton > button:hover {
         background-color: var(--navy-medium) !important;
         box-shadow: var(--shadow-card) !important;
+    }
+
+    /* Secondary buttons — outlined style */
+    .stButton > button[kind="secondary"],
+    .stButton > button[data-testid="baseButton-secondary"] {
+        background-color: transparent !important;
+        color: var(--navy-button) !important;
+        border: 1px solid var(--border-light) !important;
+    }
+
+    .stButton > button[kind="secondary"]:hover,
+    .stButton > button[data-testid="baseButton-secondary"]:hover {
+        border-color: var(--finance-negative) !important;
+        color: var(--finance-negative) !important;
+        background-color: var(--finance-negative-light) !important;
     }
 
     .stDownloadButton > button {
