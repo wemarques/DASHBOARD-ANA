@@ -122,18 +122,15 @@ def aplicar_estilos_customizados():
         color: var(--text-body) !important;
     }
 
-    /* Apply body font to spans but preserve Material Symbols/Icons */
-    span:not(.material-symbols-rounded):not(.material-icons) {
+    /* Apply body font to spans but exclude Streamlit Material icons */
+    span:not([data-testid="stIconMaterial"]) {
         font-family: var(--font-body);
         color: var(--text-body);
     }
 
-    /* Preserve Material Symbols font for Streamlit UI icons (expander arrows, etc.) */
-    .material-symbols-rounded,
-    .material-icons,
-    [data-testid="stExpanderToggleIcon"],
-    [data-testid="stExpander"] summary > div > span:first-child {
-        font-family: 'Material Symbols Rounded', 'Material Icons' !important;
+    /* Preserve Material Symbols font for Streamlit UI icons (expander arrows, sidebar toggle, etc.) */
+    [data-testid="stIconMaterial"] {
+        font-family: 'Material Symbols Rounded' !important;
     }
 
     .stCaption, [data-testid="stCaptionContainer"] p {
