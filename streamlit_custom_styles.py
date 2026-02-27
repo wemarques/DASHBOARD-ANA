@@ -194,14 +194,21 @@ def aplicar_estilos_customizados():
         border-color: var(--gold-primary) !important;
     }
 
-    [data-testid="stSidebar"] .stDownloadButton > button {
-        background-color: transparent !important;
+    [data-testid="stSidebar"] .stDownloadButton > button,
+    [data-testid="stSidebar"] .stDownloadButton > button > div,
+    [data-testid="stSidebar"] .stDownloadButton button[data-testid="stBaseButton-secondary"] {
+        background-color: var(--navy-light) !important;
         border: 1px solid var(--gold-border) !important;
         color: var(--gold-primary) !important;
     }
 
     [data-testid="stSidebar"] .stDownloadButton > button:hover {
         background-color: rgba(201, 169, 110, 0.15) !important;
+    }
+
+    [data-testid="stSidebar"] .stDownloadButton > button p,
+    [data-testid="stSidebar"] .stDownloadButton > button span {
+        color: var(--gold-primary) !important;
     }
 
     [data-testid="stSidebar"] hr {
@@ -222,14 +229,70 @@ def aplicar_estilos_customizados():
     [data-testid="stSidebar"] .stFileUploader span,
     [data-testid="stSidebar"] .stFileUploader div,
     [data-testid="stSidebar"] .stFileUploader p,
-    [data-testid="stSidebar"] .stFileUploader label,
-    [data-testid="stSidebar"] .stFileUploader button {
+    [data-testid="stSidebar"] .stFileUploader label {
         color: rgba(255, 255, 255, 0.85) !important;
     }
 
+    /* Browse files button inside file uploader — dark bg */
+    [data-testid="stSidebar"] .stFileUploader button,
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button,
+    [data-testid="stSidebar"] [data-testid="stBaseButton-minimal"] {
+        background-color: var(--navy-light) !important;
+        color: var(--gold-primary) !important;
+        border: 1px solid var(--gold-border) !important;
+    }
+
+    [data-testid="stSidebar"] .stFileUploader button p,
+    [data-testid="stSidebar"] .stFileUploader button span {
+        color: var(--gold-primary) !important;
+    }
+
+    /* Alert inside sidebar */
     [data-testid="stSidebar"] [data-testid="stAlert"] {
         background-color: rgba(201, 169, 110, 0.15) !important;
         border: 1px solid var(--gold-border) !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stAlert"] p,
+    [data-testid="stSidebar"] [data-testid="stAlert"] span {
+        color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    /* Expander inside sidebar — dark bg instead of white */
+    [data-testid="stSidebar"] .streamlit-expanderHeader,
+    [data-testid="stSidebar"] [data-testid="stExpander"] summary,
+    [data-testid="stSidebar"] [data-testid="stExpander"] > details > summary {
+        background-color: var(--navy-light) !important;
+        border: 1px solid var(--gold-border) !important;
+        color: #FFFFFF !important;
+    }
+
+    [data-testid="stSidebar"] .streamlit-expanderContent,
+    [data-testid="stSidebar"] [data-testid="stExpander"] > details > div[data-testid="stExpanderDetails"] {
+        background-color: var(--navy-medium) !important;
+        border: 1px solid var(--gold-border) !important;
+        border-top: none !important;
+    }
+
+    /* Code block inside sidebar — dark bg */
+    [data-testid="stSidebar"] code,
+    [data-testid="stSidebar"] pre,
+    [data-testid="stSidebar"] [data-testid="stCode"],
+    [data-testid="stSidebar"] .stCodeBlock {
+        background-color: var(--navy-deep) !important;
+        color: var(--gold-light) !important;
+        border: 1px solid var(--navy-muted) !important;
+    }
+
+    /* Buttons inside sidebar expander */
+    [data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button {
+        background-color: var(--navy-light) !important;
+        border: 1px solid var(--gold-border) !important;
+        color: var(--gold-primary) !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stExpander"] .stButton > button p {
+        color: var(--gold-primary) !important;
     }
 
     /* ========================================
