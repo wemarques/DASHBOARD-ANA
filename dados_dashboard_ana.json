@@ -427,6 +427,18 @@
           "timestamp": "2026-02-27T21:11:15.680419",
           "motivo": "",
           "status": "confirmada"
+        },
+        {
+          "id_antecipacao": "0c128329-9af4-4152-98d2-ac8462273fbf",
+          "id_parcela": "custom_2_jun/26",
+          "origem": "jun/26",
+          "destino": "dez/25",
+          "mes_original_parcela": "jun/26",
+          "valor_antecipado": 398.57,
+          "usuario": "usuario_logado",
+          "timestamp": "2026-02-27T21:11:16.745466",
+          "motivo": "",
+          "status": "confirmada"
         }
       ],
       "contrato": {
