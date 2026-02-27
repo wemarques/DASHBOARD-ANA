@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import hashlib
 import config_manager  # Novo gerenciador de config
 from backend_antecipacao import AntecipacaoService  # Backend Antecipação
-from github_integration import push_to_github, pull_from_github  # Integração GitHub
+from github_integration import push_to_github, pull_from_github, get_github_token, diagnosticar_token, _ultimo_erro_push  # Integração GitHub
 from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS, get_plotly_layout_theme
 from gestao_executiva import exibir_gestao_executiva, exibir_resumo_executivo  # Gestão Executiva
 
@@ -189,15 +189,34 @@ with st.sidebar:
 
     st.divider()
 
-    # Status de persistência
-    _token = os.environ.get("GITHUB_TOKEN")
+    # Status de persistência — usar mesma função que push_to_github usa
+    _token = get_github_token()
     if not _token:
-        try:
-            _token = st.secrets.get("GITHUB_TOKEN") if hasattr(st, "secrets") else None
-        except Exception:
-            _token = None
-    if not _token:
-        st.warning("GITHUB_TOKEN não configurado. Dados serão perdidos ao reiniciar. Configure em Settings > Secrets no Streamlit Cloud.")
+        st.warning("GITHUB_TOKEN não encontrado. Dados serão perdidos ao reiniciar. Configure em Settings > Secrets no Streamlit Cloud.")
+    else:
+        # Token existe, verificar se último push teve erro
+        if _ultimo_erro_push.get("msg"):
+            st.error(f"Erro no último save: {_ultimo_erro_push['msg']}")
+
+    # Diagnóstico de token (expansível)
+    with st.expander("Diagnóstico GitHub", expanded=False):
+        if st.button("Testar Conexão"):
+            with st.spinner("Testando..."):
+                diag = diagnosticar_token()
+            if diag["token_encontrado"]:
+                st.write(f"Token: `{diag.get('token_preview', '***')}`")
+                if diag["leitura_ok"]:
+                    st.success("Leitura: OK")
+                else:
+                    st.error("Leitura: FALHOU")
+                if diag["escrita_ok"]:
+                    st.success("Escrita: OK")
+                else:
+                    st.error("Escrita: SEM PERMISSAO")
+            else:
+                st.error("Token nao encontrado")
+            if diag.get("erro"):
+                st.code(diag["erro"])
 
 # Caminho do arquivo de dados
 DADOS_ARQUIVO = "dados_dashboard_ana.json"
@@ -461,12 +480,14 @@ def salvar_dados(itens_todos, meses_quit):
     # Local
     with open(DADOS_ARQUIVO, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
-    
+
     # GitHub Cloud Persistence
     try:
-        push_to_github(dados, commit_message="Update data: Itens/Quitação alterados via App")
+        success = push_to_github(dados, commit_message="Update data: Itens/Quitacao alterados via App")
+        if not success and _ultimo_erro_push.get("msg"):
+            st.toast(f"Aviso: {_ultimo_erro_push['msg']}", icon="⚠️")
     except Exception as e:
-        print(f"Erro ao salvar no GitHub: {e}")
+        st.toast(f"Erro ao salvar no GitHub: {e}", icon="❌")
 
 def _mesclar_antecipacoes(dados_local, dados_github):
     """
