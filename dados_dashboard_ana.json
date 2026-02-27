@@ -439,6 +439,18 @@
           "timestamp": "2026-02-27T21:11:16.745466",
           "motivo": "",
           "status": "confirmada"
+        },
+        {
+          "id_antecipacao": "e277b1c5-dd9f-46e6-9794-f2cd9f6726e0",
+          "id_parcela": "custom_2_jul/26",
+          "origem": "jul/26",
+          "destino": "dez/25",
+          "mes_original_parcela": "jul/26",
+          "valor_antecipado": 398.57,
+          "usuario": "usuario_logado",
+          "timestamp": "2026-02-27T21:11:17.725328",
+          "motivo": "",
+          "status": "confirmada"
         }
       ],
       "contrato": {
@@ -449,9 +461,9 @@
       },
       "cronograma": {
         "inicio_atual": "jan/26",
-        "fim_atual": "set/26",
-        "parcelas_pagas": 3,
-        "parcelas_restantes": 9,
+        "fim_atual": "jun/26",
+        "parcelas_pagas": 6,
+        "parcelas_restantes": 6,
         "mapeamento": {
           "jan/26": {
             "numero": 1,
@@ -475,42 +487,42 @@
           },
           "mai/26": {
             "numero": 5,
-            "vencimento_atual": "fev/26",
-            "status": "pendente"
+            "vencimento_atual": "dez/25",
+            "status": "antecipada"
           },
           "jun/26": {
             "numero": 6,
-            "vencimento_atual": "mar/26",
-            "status": "pendente"
+            "vencimento_atual": "dez/25",
+            "status": "antecipada"
           },
           "jul/26": {
             "numero": 7,
-            "vencimento_atual": "abr/26",
-            "status": "pendente"
+            "vencimento_atual": "dez/25",
+            "status": "antecipada"
           },
           "ago/26": {
             "numero": 8,
-            "vencimento_atual": "mai/26",
+            "vencimento_atual": "fev/26",
             "status": "pendente"
           },
           "set/26": {
             "numero": 9,
-            "vencimento_atual": "jun/26",
+            "vencimento_atual": "mar/26",
             "status": "pendente"
           },
           "out/26": {
             "numero": 10,
-            "vencimento_atual": "jul/26",
+            "vencimento_atual": "abr/26",
             "status": "pendente"
           },
           "nov/26": {
             "numero": 11,
-            "vencimento_atual": "ago/26",
+            "vencimento_atual": "mai/26",
             "status": "pendente"
           },
           "dez/26": {
             "numero": 12,
-            "vencimento_atual": "set/26",
+            "vencimento_atual": "jun/26",
             "status": "pendente"
           }
         }
