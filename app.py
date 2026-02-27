@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import hashlib
 import config_manager  # Novo gerenciador de config
 from backend_antecipacao import AntecipacaoService  # Backend Antecipação
-from github_integration import push_to_github, pull_from_github, get_github_token  # Integração GitHub
+from github_integration import push_to_github, pull_from_github  # Integração GitHub
 from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS, get_plotly_layout_theme
 from gestao_executiva import exibir_gestao_executiva, exibir_resumo_executivo  # Gestão Executiva
 
@@ -190,7 +190,8 @@ with st.sidebar:
     st.divider()
 
     # Status de persistência
-    if not get_github_token():
+    _token = os.environ.get("GITHUB_TOKEN") or (st.secrets.get("GITHUB_TOKEN") if hasattr(st, "secrets") else None)
+    if not _token:
         st.warning("GITHUB_TOKEN não configurado. Dados serão perdidos ao reiniciar. Configure em Settings > Secrets no Streamlit Cloud.")
 
 # Caminho do arquivo de dados
