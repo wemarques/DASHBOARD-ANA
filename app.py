@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import hashlib
 import config_manager  # Novo gerenciador de config
 from backend_antecipacao import AntecipacaoService  # Backend Antecipação
-from github_integration import push_to_github  # Integração GitHub
+from github_integration import push_to_github, pull_from_github, get_github_token  # Integração GitHub
 from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS, get_plotly_layout_theme
 from gestao_executiva import exibir_gestao_executiva, exibir_resumo_executivo  # Gestão Executiva
 
@@ -188,6 +188,10 @@ with st.sidebar:
                 st.error(f"❌ Erro ao processar arquivo: {e}")
 
     st.divider()
+
+    # Status de persistência
+    if not get_github_token():
+        st.warning("GITHUB_TOKEN não configurado. Dados serão perdidos ao reiniciar. Configure em Settings > Secrets no Streamlit Cloud.")
 
 # Caminho do arquivo de dados
 DADOS_ARQUIVO = "dados_dashboard_ana.json"
@@ -458,8 +462,39 @@ def salvar_dados(itens_todos, meses_quit):
     except Exception as e:
         print(f"Erro ao salvar no GitHub: {e}")
 
+def _mesclar_antecipacoes(dados_local, dados_github):
+    """
+    Mescla antecipações do GitHub nos dados locais.
+    Para cada item, mantém as antecipações com mais registros (local ou GitHub).
+    """
+    if not dados_github or "itens" not in dados_github:
+        return dados_local
+
+    # Indexar itens do GitHub por ID
+    github_por_id = {i["id"]: i for i in dados_github.get("itens", [])}
+
+    for item in dados_local.get("itens", []):
+        github_item = github_por_id.get(item["id"])
+        if not github_item:
+            continue
+
+        ant_local = item.get("antecipacoes", [])
+        ant_github = github_item.get("antecipacoes", [])
+
+        # Se GitHub tem mais antecipações confirmadas, usar as do GitHub
+        conf_local = [a for a in ant_local if a.get("status") == "confirmada"]
+        conf_github = [a for a in ant_github if a.get("status") == "confirmada"]
+
+        if len(conf_github) > len(conf_local):
+            item["antecipacoes"] = ant_github
+
+    return dados_local
+
 def carregar_dados():
-    """Carrega dados do disco, se existir"""
+    """Carrega dados do disco e mescla com GitHub para preservar antecipações"""
+    dados = None
+
+    # 1. Tentar carregar do disco local
     if os.path.exists(DADOS_ARQUIVO):
         try:
             with open(DADOS_ARQUIVO, "r", encoding="utf-8") as f:
@@ -476,41 +511,33 @@ def carregar_dados():
                     for i, item in enumerate(itens_personalizados):
                         item["id"] = f"custom_{i}"
                     return {"itens": itens_padrao + itens_personalizados, "meses_quitados": dados.get("meses_quitados", MESES_TODOS[:10])}
-                
-                # Fix: Garantir que Bancorbras Vila Galé exista
-                tem_vila_gale = any(i.get("nome") == "Bancorbras Vila Galé" for i in dados.get("itens", []))
-                if not tem_vila_gale and "itens" in dados:
-                    vila_gale = {
-                        "id": "bancorbrasVilaGale",
-                        "nome": "Bancorbras Vila Galé",
-                        "valor": 398.57,
-                        "tipo": "debito",
-                        "inicio": "jan/26",
-                        "fim": "dez/26",
-                        "antecipacoes": [],
-                        "contrato": {
-                            "inicio_original": "jan/26",
-                            "fim_original": "dez/26",
-                            "total_parcelas": 12,
-                            "valor_parcela": 398.57
-                        }
-                    }
-                    try:
-                        vila_gale["cronograma"] = calcular_cronograma_atual(vila_gale)
-                    except:
-                        pass
-                    dados["itens"].append(vila_gale)
-                    # Salvar a correção
-                    try:
-                        salvar_dados(dados["itens"], dados["meses_quitados"])
-                    except:
-                        pass
-
-                return dados
         except Exception as e:
-            st.error(f"Erro ao carregar dados: {e}")
-    
-    # Dados padrão iniciais
+            st.error(f"Erro ao carregar dados locais: {e}")
+
+    # 2. Buscar dados do GitHub (uma única vez)
+    dados_github = None
+    try:
+        dados_github = pull_from_github()
+    except:
+        pass
+
+    # 3. Se não tem dados locais, usar GitHub
+    if not dados or "itens" not in dados:
+        if dados_github and "itens" in dados_github:
+            dados = dados_github
+            # Salvar localmente para cache
+            try:
+                with open(DADOS_ARQUIVO, "w", encoding="utf-8") as f:
+                    json.dump(dados, f, ensure_ascii=False, indent=2)
+            except:
+                pass
+
+    # 4. Se tem dados, mesclar antecipações do GitHub (evita perda)
+    if dados and "itens" in dados:
+        dados = _mesclar_antecipacoes(dados, dados_github)
+        return dados
+
+    # 4. Dados padrão iniciais (último recurso)
     return {
         "itens": [
             {"id": "planoSaude", "nome": "Plano de Saúde", "valor": 1518.93, "inicio": "jan/25", "fim": "dez/28", "tipo": "debito"},
@@ -1198,119 +1225,123 @@ with aba3:
                     st.rerun()
     
     st.divider()
-    
-    # Seção: Visualização por mês
+
+    # Seção: Visualização por mês (agrupado por ano)
     st.header("Detalhamento Mensal")
-    
-    # Filtro por ano
-    ano_filtro = st.selectbox("Filtrar por Ano", ["Todos os Anos", "2025", "2026", "2027", "2028"])
-    if ano_filtro != "Todos os Anos":
-        df_exibir = df[df["mesAno"].str.endswith(f"/{ano_filtro[2:]}")].copy()
-    else:
-        df_exibir = df.copy()
-    
-    # Exibir cards por mês
-    for _, row in df_exibir.iterrows():
-        mes = row["mesAno"]
-        quitado = mes in st.session_state.meses_quitados
-        saldo = row["total"]
-        
-        # Cabeçalho do card
-        titulo = f"{'✅' if quitado else '📅'} {mes}"
-        if quitado:
-            titulo += " — ✓ QUITADO"
-        
-        with st.expander(titulo, expanded=False):
-            # Botão para alternar QUITADO
-            if st.button("🔄 Alternar Status de Quitação", key=f"btn_{mes}"):
-                if quitado:
-                    st.session_state.meses_quitados.remove(mes)
-                else:
-                    st.session_state.meses_quitados.append(mes)
-                salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-                st.rerun()
-            
-            # Listar itens do mês
-            itens_exibidos = False
-            for item in st.session_state.itens:
-                col_name = item["id"]
-                valor_item = row[col_name]
-                if valor_item <= 0:
-                    continue
-                
-                itens_exibidos = True
-                
-                # Contador de prazo (exceto Plano de Saúde)
-                contador = ""
-                if item["nome"] != "Plano de Saúde":
-                    # Usar cronograma se disponível
-                    cronograma = item.get("cronograma", {})
-                    mapeamento = cronograma.get("mapeamento", {})
-                    
-                    # Encontrar parcela original correspondente a este mês
-                    parcela_info = None
-                    for mes_original, info in mapeamento.items():
-                        if info["vencimento_atual"] == mes:
-                            parcela_info = info
-                            break
-                    
-                    if parcela_info:
-                        numero = parcela_info["numero"]
-                        total = item["contrato"]["total_parcelas"]
-                        contador = f" (Parcela {numero}/{total})"
+
+    # Agrupar meses por ano (4 expanders: 2025, 2026, 2027, 2028)
+    for ano in [2025, 2026, 2027, 2028]:
+        sufixo_ano = f"/{str(ano)[2:]}"
+        df_ano = df[df["mesAno"].str.endswith(sufixo_ano)].copy()
+
+        if df_ano.empty:
+            continue
+
+        # Calcular resumo do ano
+        meses_quitados_ano = [m for m in st.session_state.meses_quitados if m.endswith(sufixo_ano)]
+        total_meses_ano = len(df_ano)
+        total_quitados_ano = len(meses_quitados_ano)
+        saldo_ano = df_ano["total"].sum()
+        saldo_fmt = f"{abs(saldo_ano):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        sinal_ano = "+" if saldo_ano >= 0 else "-"
+
+        titulo_ano = f"{ano} — {total_quitados_ano}/{total_meses_ano} meses quitados | Saldo: {sinal_ano} R$ {saldo_fmt}"
+
+        with st.expander(titulo_ano, expanded=False):
+            for _, row in df_ano.iterrows():
+                mes = row["mesAno"]
+                quitado = mes in st.session_state.meses_quitados
+                saldo = row["total"]
+
+                # Header do mês com status
+                status_icon = "✅" if quitado else "📅"
+                status_text = " — QUITADO" if quitado else ""
+                st.markdown(f"### {status_icon} {mes}{status_text}")
+
+                # Botão para alternar QUITADO
+                if st.button("Alternar Quitação", key=f"btn_{mes}"):
+                    if quitado:
+                        st.session_state.meses_quitados.remove(mes)
                     else:
-                        # Fallback para cálculo antigo
-                        meses_ativos = get_meses_entre(item["inicio"], item["fim"])
-                        if mes in meses_ativos:
-                            prest_atual = meses_ativos.index(mes) + 1
-                            total_prest = len(meses_ativos)
-                            contador = f" (PRAZO {prest_atual}/{total_prest})"
-                
-                # Formatação do valor
-                sinal = "+" if item["tipo"] == "credito" else "-"
-                valor_fmt = f"{valor_item:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                st.write(f"**{item['nome']}{contador}:** {sinal} R$ {valor_fmt}")
-            
-            if not itens_exibidos:
-                st.write("_Nenhum item neste mês._")
-            
-            # Verificar se há antecipações para este mês
-            antecipacoes_mes = listar_antecipacoes_por_mes(mes)
-            
-            if antecipacoes_mes:
-                st.markdown("---")
-                st.markdown("**📥 Prestações Antecipadas para este mês:**")
-                
-                for ant in antecipacoes_mes:
-                    # Formato: jan/26 ➔ nov/25 (R$ 398.57) Prestação Antecipada
-                    def fmt_brl_valor(x):
-                        return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                    valor_fmt = fmt_brl_valor(ant['valor'])
-                    
-                    # Buscar item para calcular número da parcela
-                    item_ant = next((i for i in st.session_state.itens if i["nome"] == ant['item_nome']), None)
-                    
-                    if item_ant:
-                        num_parcela, total_parcelas = calcular_numero_parcela(ant['origem'], item_ant["inicio"], item_ant["fim"])
-                        
-                        if num_parcela is not None:
-                            texto_parcela = f" (Parcela {num_parcela}/{total_parcelas})"
+                        st.session_state.meses_quitados.append(mes)
+                    salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
+                    st.rerun()
+
+                # Listar itens do mês
+                itens_exibidos = False
+                for item in st.session_state.itens:
+                    col_name = item["id"]
+                    valor_item = row[col_name]
+                    if valor_item <= 0:
+                        continue
+
+                    itens_exibidos = True
+
+                    # Contador de prazo (exceto Plano de Saúde)
+                    contador = ""
+                    if item["nome"] != "Plano de Saúde":
+                        cronograma = item.get("cronograma", {})
+                        mapeamento = cronograma.get("mapeamento", {})
+
+                        parcela_info = None
+                        for mes_original, info in mapeamento.items():
+                            if info["vencimento_atual"] == mes:
+                                parcela_info = info
+                                break
+
+                        if parcela_info:
+                            numero = parcela_info["numero"]
+                            total = item["contrato"]["total_parcelas"]
+                            contador = f" (Parcela {numero}/{total})"
                         else:
-                            texto_parcela = " (Fora do fluxo)"
-                    else:
-                        texto_parcela = ""
-                    
-                    # Formato: jan/26 ➔ nov/25 (R$ 398.57) Prestação Antecipada
-                    st.markdown(
-                        f"• {ant['origem']}{texto_parcela} ➔ {ant['destino']} (R$ {valor_fmt}) *Prestação Antecipada*",
-                        unsafe_allow_html=True
-                    )
-                    
-                    if ant['motivo']:
-                        st.caption(f"  Motivo: {ant['motivo']}")
-            
-            # Saldo final
-            st.markdown(f"**Saldo:** {formatar_valor_financeiro(saldo)}", unsafe_allow_html=True)
+                            meses_ativos = get_meses_entre(item["inicio"], item["fim"])
+                            if mes in meses_ativos:
+                                prest_atual = meses_ativos.index(mes) + 1
+                                total_prest = len(meses_ativos)
+                                contador = f" (PRAZO {prest_atual}/{total_prest})"
+
+                    sinal = "+" if item["tipo"] == "credito" else "-"
+                    valor_fmt = f"{valor_item:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    st.write(f"**{item['nome']}{contador}:** {sinal} R$ {valor_fmt}")
+
+                if not itens_exibidos:
+                    st.write("_Nenhum item neste mês._")
+
+                # Verificar se há antecipações para este mês
+                antecipacoes_mes = listar_antecipacoes_por_mes(mes)
+
+                if antecipacoes_mes:
+                    st.markdown("---")
+                    st.markdown("**Prestações Antecipadas para este mês:**")
+
+                    for ant in antecipacoes_mes:
+                        def fmt_brl_valor(x):
+                            return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+                        valor_fmt = fmt_brl_valor(ant['valor'])
+
+                        item_ant = next((i for i in st.session_state.itens if i["nome"] == ant['item_nome']), None)
+
+                        if item_ant:
+                            num_parcela, total_parcelas = calcular_numero_parcela(ant['origem'], item_ant["inicio"], item_ant["fim"])
+
+                            if num_parcela is not None:
+                                texto_parcela = f" (Parcela {num_parcela}/{total_parcelas})"
+                            else:
+                                texto_parcela = " (Fora do fluxo)"
+                        else:
+                            texto_parcela = ""
+
+                        st.markdown(
+                            f"• {ant['origem']}{texto_parcela} ➔ {ant['destino']} (R$ {valor_fmt}) *Prestação Antecipada*",
+                            unsafe_allow_html=True
+                        )
+
+                        if ant['motivo']:
+                            st.caption(f"  Motivo: {ant['motivo']}")
+
+                # Saldo final do mês
+                st.markdown(f"**Saldo:** {formatar_valor_financeiro(saldo)}", unsafe_allow_html=True)
+                st.markdown("---")
     
     # Rodapé
     st.divider()

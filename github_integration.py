@@ -73,3 +73,29 @@ def push_to_github(json_content, commit_message="Update data via Streamlit App")
     except Exception as e:
         print(f"❌ Exceção ao conectar com GitHub: {str(e)}")
         return False
+
+def pull_from_github():
+    """
+    Baixa o conteúdo do dados_dashboard_ana.json do GitHub.
+    Retorna o dict com os dados ou None em caso de erro.
+    """
+    token = get_github_token()
+
+    url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{FILE_PATH}"
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if token:
+        headers["Authorization"] = f"token {token}"
+
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            file_data = response.json()
+            content_b64 = file_data["content"]
+            content_str = base64.b64decode(content_b64).decode("utf-8")
+            return json.loads(content_str)
+        else:
+            print(f"Erro ao baixar dados do GitHub: {response.status_code}")
+            return None
+    except Exception as e:
+        print(f"Exceção ao conectar com GitHub para pull: {e}")
+        return None
