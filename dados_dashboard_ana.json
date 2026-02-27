@@ -403,6 +403,18 @@
           "timestamp": "2026-02-27T21:10:41.417574",
           "motivo": "",
           "status": "confirmada"
+        },
+        {
+          "id_antecipacao": "34cc52b8-61b5-4b9e-a684-86ca28844ef7",
+          "id_parcela": "custom_2_abr/26",
+          "origem": "abr/26",
+          "destino": "nov/25",
+          "mes_original_parcela": "abr/26",
+          "valor_antecipado": 398.57,
+          "usuario": "usuario_logado",
+          "timestamp": "2026-02-27T21:10:42.530300",
+          "motivo": "",
+          "status": "confirmada"
         }
       ],
       "contrato": {
@@ -413,9 +425,9 @@
       },
       "cronograma": {
         "inicio_atual": "jan/26",
-        "fim_atual": "dez/26",
-        "parcelas_pagas": 0,
-        "parcelas_restantes": 12,
+        "fim_atual": "set/26",
+        "parcelas_pagas": 3,
+        "parcelas_restantes": 9,
         "mapeamento": {
           "jan/26": {
             "numero": 1,
@@ -424,57 +436,57 @@
           },
           "fev/26": {
             "numero": 2,
-            "vencimento_atual": "fev/26",
-            "status": "pendente"
+            "vencimento_atual": "nov/25",
+            "status": "antecipada"
           },
           "mar/26": {
             "numero": 3,
-            "vencimento_atual": "mar/26",
-            "status": "pendente"
+            "vencimento_atual": "nov/25",
+            "status": "antecipada"
           },
           "abr/26": {
             "numero": 4,
-            "vencimento_atual": "abr/26",
-            "status": "pendente"
+            "vencimento_atual": "nov/25",
+            "status": "antecipada"
           },
           "mai/26": {
             "numero": 5,
-            "vencimento_atual": "mai/26",
+            "vencimento_atual": "fev/26",
             "status": "pendente"
           },
           "jun/26": {
             "numero": 6,
-            "vencimento_atual": "jun/26",
+            "vencimento_atual": "mar/26",
             "status": "pendente"
           },
           "jul/26": {
             "numero": 7,
-            "vencimento_atual": "jul/26",
+            "vencimento_atual": "abr/26",
             "status": "pendente"
           },
           "ago/26": {
             "numero": 8,
-            "vencimento_atual": "ago/26",
+            "vencimento_atual": "mai/26",
             "status": "pendente"
           },
           "set/26": {
             "numero": 9,
-            "vencimento_atual": "set/26",
+            "vencimento_atual": "jun/26",
             "status": "pendente"
           },
           "out/26": {
             "numero": 10,
-            "vencimento_atual": "out/26",
+            "vencimento_atual": "jul/26",
             "status": "pendente"
           },
           "nov/26": {
             "numero": 11,
-            "vencimento_atual": "nov/26",
+            "vencimento_atual": "ago/26",
             "status": "pendente"
           },
           "dez/26": {
             "numero": 12,
-            "vencimento_atual": "dez/26",
+            "vencimento_atual": "set/26",
             "status": "pendente"
           }
         }
@@ -495,6 +507,5 @@
     "nov/25",
     "dez/25",
     "jan/26"
-  ],
-  "versao_schema": "1.1"
+  ]
 }
