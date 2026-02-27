@@ -57,25 +57,26 @@ def verificar_senha():
     <div style='
         text-align: center;
         padding: 3rem 2rem;
-        background: linear-gradient(135deg, #0A1628 0%, #162036 100%);
+        background: linear-gradient(135deg, #1C2B4A 0%, #2A3A52 100%);
         border-radius: 20px;
         margin: 2rem auto;
         max-width: 500px;
         box-shadow: 0 10px 25px rgba(10, 22, 40, 0.15);
     '>
-        <h1 style='
-            color: #FFFFFF !important;
-            font-family: Playfair Display, serif !important;
-            font-size: 2rem !important;
-            margin-bottom: 0.5rem !important;
-        '>Dashboard Ana</h1>
-        <p style='
-            color: #C9A96E !important;
-            font-family: DM Sans, sans-serif !important;
+        <div style='
+            color: #FFFFFF;
+            font-family: Playfair Display, serif;
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        '>Dashboard Ana</div>
+        <div style='
+            color: #C9A96E;
+            font-family: DM Sans, sans-serif;
             font-size: 0.9rem;
             letter-spacing: 0.1em;
             text-transform: uppercase;
-        '>Gestão Financeira Pessoal</p>
+        '>Gestão Financeira Pessoal</div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -651,31 +652,53 @@ with aba1:
 with aba2:
     # === DETALHAMENTO MENSAL (CONTEÚDO EXISTENTE) ===
     st.header("Detalhamento Mensal")
-    total_debitos = 0
-    total_creditos = 0
-    
-    for item in st.session_state.itens:
-        col_name = item["id"]
-        valor_total = df[col_name].sum()
-        if item["tipo"] == "credito":
-            total_creditos += valor_total
-        else:
-            total_debitos += valor_total
-    
-    saldo = total_creditos - total_debitos
-    meses_quit = len(st.session_state.meses_quitados)
-    total_meses = len(MESES_TODOS)
-    
+
     # Formatação monetária BR
     def fmt_brl(x):
         return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    
-    # Métricas principais
+
+    # Seletor de mês para o consolidado
+    meses_quit = len(st.session_state.meses_quitados)
+    total_meses = len(MESES_TODOS)
+
+    mes_atual_idx = None
+    mes_atual_label = datetime.now().strftime("%b/%y").lower()
+    for i, m in enumerate(MESES_TODOS):
+        if m == mes_atual_label:
+            mes_atual_idx = i
+            break
+    if mes_atual_idx is None:
+        mes_atual_idx = 0
+
+    mes_detalhe = st.selectbox(
+        "Mês para consolidado:",
+        MESES_TODOS,
+        index=mes_atual_idx,
+        key="mes_detalhe_sel"
+    )
+
+    # Calcular consolidado do mês selecionado
+    debitos_mes = 0
+    creditos_mes = 0
+
+    for item in st.session_state.itens:
+        col_name = item["id"]
+        if col_name in df.columns and mes_detalhe in df["mesAno"].values:
+            valor_mes = df.loc[df["mesAno"] == mes_detalhe, col_name].iloc[0]
+            if item["tipo"] == "credito":
+                creditos_mes += valor_mes
+            else:
+                debitos_mes += abs(valor_mes)
+
+    saldo_mes = creditos_mes - debitos_mes
+    status_mes = "QUITADO" if mes_detalhe in st.session_state.meses_quitados else "PENDENTE"
+
+    # Métricas do mês selecionado
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("TOTAL DÉBITOS", fmt_brl(total_debitos), delta=None, delta_color="inverse")
-    col2.metric("TOTAL CRÉDITOS", fmt_brl(total_creditos), delta=None)
-    col3.metric("SALDO TOTAL", fmt_brl(saldo), delta=None, delta_color="normal" if saldo >= 0 else "inverse")
-    col4.metric("MESES QUITADOS", f"{meses_quit}/{total_meses}", delta=f"{(meses_quit/total_meses*100):.1f}%")
+    col1.metric("DÉBITOS DO MÊS", fmt_brl(debitos_mes), delta=None, delta_color="inverse")
+    col2.metric("CRÉDITOS DO MÊS", fmt_brl(creditos_mes), delta=None)
+    col3.metric("SALDO DO MÊS", fmt_brl(saldo_mes), delta=None, delta_color="normal" if saldo_mes >= 0 else "inverse")
+    col4.metric("STATUS", status_mes, delta=f"{meses_quit}/{total_meses} quitados")
     
     st.divider()
     
@@ -719,7 +742,7 @@ with aba2:
                 names="Item",
                 title="Proporção de Despesas por Item",
                 hole=0.45,
-                color_discrete_sequence=['#0A1628', '#162036', '#1C2940', '#2A3A52', '#C9A96E', '#E8D5B0', '#374151', '#6B7280']
+                color_discrete_sequence=['#C9A96E', '#1C2B4A', '#10B981', '#EF4444', '#E8D5B0', '#6366F1', '#F59E0B', '#6B7280']
             )
             fig_pizza.update_traces(
                 textposition='inside',
@@ -744,13 +767,19 @@ with aba2:
             col_name = item["id"]
             valor_total = df[col_name].sum()
             meses_ativos = get_meses_entre(item["inicio"], item["fim"])
-            total_parcelas = len(meses_ativos)
-            
-            # Contar quantas parcelas já foram quitadas
+            total_parcelas_item = len(meses_ativos)
+
+            # Contar parcelas quitadas (meses marcados como quitados)
             parcelas_quitadas = sum(1 for m in meses_ativos if m in st.session_state.meses_quitados)
-            if total_parcelas > 0:
-                percentual = (parcelas_quitadas / total_parcelas) * 100
-                progresso = f"{parcelas_quitadas}/{total_parcelas} ({percentual:.1f}%)"
+
+            # Contar parcelas antecipadas (via cronograma de antecipações)
+            cronograma = calcular_cronograma_atual(item)
+            parcelas_antecipadas = cronograma.get("parcelas_pagas", 0)
+
+            total_pagas = parcelas_quitadas + parcelas_antecipadas
+            if total_parcelas_item > 0:
+                percentual = (total_pagas / total_parcelas_item) * 100
+                progresso = f"{total_pagas}/{total_parcelas_item} ({percentual:.1f}%)"
             else:
                 progresso = "0/0 (0.0%)"
             
