@@ -379,7 +379,20 @@
       "tipo": "debito",
       "inicio": "jan/26",
       "fim": "dez/26",
-      "antecipacoes": [],
+      "antecipacoes": [
+        {
+          "id_antecipacao": "c48f6221-1e6c-49a4-b3ef-9e345c4d62db",
+          "id_parcela": "custom_2_fev/26",
+          "origem": "fev/26",
+          "destino": "nov/25",
+          "mes_original_parcela": "fev/26",
+          "valor_antecipado": 398.57,
+          "usuario": "usuario_logado",
+          "timestamp": "2026-02-27T21:10:40.426783",
+          "motivo": "",
+          "status": "confirmada"
+        }
+      ],
       "contrato": {
         "inicio_original": "jan/26",
         "fim_original": "dez/26",
