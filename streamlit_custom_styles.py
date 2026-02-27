@@ -211,7 +211,11 @@ def aplicar_estilos_customizados():
     [data-testid="stSidebar"] .stFileUploader {
         border: 1px dashed var(--gold-border) !important;
         border-radius: var(--radius-md) !important;
-        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"],
+    [data-testid="stSidebar"] .stFileUploader section {
+        background-color: rgba(255, 255, 255, 0.08) !important;
     }
 
     [data-testid="stSidebar"] .stFileUploader small,
