@@ -661,14 +661,15 @@ with aba2:
     meses_quit = len(st.session_state.meses_quitados)
     total_meses = len(MESES_TODOS)
 
-    mes_atual_idx = None
-    mes_atual_label = datetime.now().strftime("%b/%y").lower()
+    nomes_mes_pt = ["jan", "fev", "mar", "abr", "mai", "jun",
+                     "jul", "ago", "set", "out", "nov", "dez"]
+    now = datetime.now()
+    mes_atual_label = f"{nomes_mes_pt[now.month - 1]}/{str(now.year)[2:]}"
+    mes_atual_idx = 0
     for i, m in enumerate(MESES_TODOS):
         if m == mes_atual_label:
             mes_atual_idx = i
             break
-    if mes_atual_idx is None:
-        mes_atual_idx = 0
 
     mes_detalhe = st.selectbox(
         "Mês para consolidado:",
