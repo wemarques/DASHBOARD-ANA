@@ -190,7 +190,12 @@ with st.sidebar:
     st.divider()
 
     # Status de persistência
-    _token = os.environ.get("GITHUB_TOKEN") or (st.secrets.get("GITHUB_TOKEN") if hasattr(st, "secrets") else None)
+    _token = os.environ.get("GITHUB_TOKEN")
+    if not _token:
+        try:
+            _token = st.secrets.get("GITHUB_TOKEN") if hasattr(st, "secrets") else None
+        except Exception:
+            _token = None
     if not _token:
         st.warning("GITHUB_TOKEN não configurado. Dados serão perdidos ao reiniciar. Configure em Settings > Secrets no Streamlit Cloud.")
 
