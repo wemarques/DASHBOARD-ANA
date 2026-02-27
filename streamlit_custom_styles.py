@@ -130,15 +130,6 @@ def aplicar_estilos_customizados():
         color: inherit !important;
     }
 
-    /* Sidebar text must stay white despite global p/span rules */
-    [data-testid="stSidebar"] p,
-    [data-testid="stSidebar"] .stMarkdown p,
-    [data-testid="stSidebar"] span,
-    [data-testid="stSidebar"] label,
-    [data-testid="stSidebar"] div {
-        color: rgba(255, 255, 255, 0.85) !important;
-    }
-
     /* Apply body font to spans but exclude Streamlit Material icons */
     span:not([data-testid="stIconMaterial"]) {
         font-family: var(--font-body);
@@ -165,6 +156,27 @@ def aplicar_estilos_customizados():
 
     [data-testid="stSidebar"] * {
         color: #FFFFFF !important;
+    }
+
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] .stMarkdown h1,
+    [data-testid="stSidebar"] .stMarkdown h2,
+    [data-testid="stSidebar"] .stMarkdown h3 {
+        color: #FFFFFF !important;
+    }
+
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] .stMarkdown p,
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .stText,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] div,
+    [data-testid="stSidebar"] small,
+    [data-testid="stSidebar"] .stCaption p,
+    [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
+        color: rgba(255, 255, 255, 0.85) !important;
     }
 
     [data-testid="stSidebar"] .stButton > button {
@@ -199,6 +211,21 @@ def aplicar_estilos_customizados():
     [data-testid="stSidebar"] .stFileUploader {
         border: 1px dashed var(--gold-border) !important;
         border-radius: var(--radius-md) !important;
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+
+    [data-testid="stSidebar"] .stFileUploader small,
+    [data-testid="stSidebar"] .stFileUploader span,
+    [data-testid="stSidebar"] .stFileUploader div,
+    [data-testid="stSidebar"] .stFileUploader p,
+    [data-testid="stSidebar"] .stFileUploader label,
+    [data-testid="stSidebar"] .stFileUploader button {
+        color: rgba(255, 255, 255, 0.85) !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stAlert"] {
+        background-color: rgba(201, 169, 110, 0.15) !important;
+        border: 1px solid var(--gold-border) !important;
     }
 
     /* ========================================
