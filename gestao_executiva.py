@@ -251,8 +251,19 @@ class GestaoExecutiva:
         """Cria um resumo executivo rápido"""
         st.title("Resumo Executivo")
 
-        # Últimos 3 meses
-        ultimos_meses = list(self.df['mesAno'].tail(3))
+        # Últimos 3 meses até o mês atual (não meses futuros do DataFrame)
+        _nomes = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"]
+        agora = datetime.now()
+        mes_atual_str = f"{_nomes[agora.month - 1]}/{str(agora.year)[2:]}"
+        todos_meses = list(self.df['mesAno'])
+        if mes_atual_str in todos_meses:
+            idx = todos_meses.index(mes_atual_str)
+            start = max(0, idx - 2)
+            ultimos_meses = todos_meses[start:idx + 1]
+        else:
+            # Fallback: pegar últimos 3 meses com dados (total != 0)
+            meses_com_dados = [m for m in todos_meses if self.df.loc[self.df['mesAno'] == m, 'total'].iloc[0] != 0]
+            ultimos_meses = meses_com_dados[-3:] if meses_com_dados else todos_meses[:3]
 
         resultados = []
         for mes in ultimos_meses:
