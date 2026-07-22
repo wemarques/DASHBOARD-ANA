@@ -532,7 +532,7 @@
       "id": "custom_3",
       "nome": "Lava roupas mãe",
       "valor": 100.0,
-      "tipo": "debito",
+      "tipo": "credito",
       "inicio": "jul/26",
       "fim": "abr/27"
     }
