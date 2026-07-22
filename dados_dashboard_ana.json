@@ -543,14 +543,6 @@
       "tipo": "debito",
       "inicio": "jul/26",
       "fim": "abr/27"
-    },
-    {
-      "id": "custom_5",
-      "nome": "Lava roupas mãe",
-      "valor": 100.0,
-      "tipo": "debito",
-      "inicio": "jul/26",
-      "fim": "abr/27"
     }
   ],
   "meses_quitados": [
