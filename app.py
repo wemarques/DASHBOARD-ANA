@@ -14,7 +14,7 @@ from backend_antecipacao import AntecipacaoService  # Backend Antecipação
 from github_integration import push_to_github, pull_from_github, get_github_token, diagnosticar_token, _ultimo_erro_push  # Integração GitHub
 from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS, get_plotly_layout_theme
 from gestao_executiva import exibir_gestao_executiva  # Gestão Executiva (acerto do mês)
-from quitacao_ui import bloco_status_mes, painel_quitacao  # Controle de Quitação (UX)
+from detalhamento_mensal import exibir_detalhamento_mensal  # Detalhamento Mensal (quitação)
 
 # Configuração da página
 st.set_page_config(
@@ -793,170 +793,14 @@ with aba1:
     exibir_gestao_executiva(st.session_state.itens, st.session_state.meses_quitados, df)
 
 with aba2:
-    # === DETALHAMENTO MENSAL (CONTEÚDO EXISTENTE) ===
-    st.header("Detalhamento Mensal")
-
-    # Formatação monetária BR
-    def fmt_brl(x):
-        return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-    # Seletor de mês para o consolidado
-    total_meses = len(MESES_TODOS)
-
-    nomes_mes_pt = ["jan", "fev", "mar", "abr", "mai", "jun",
-                     "jul", "ago", "set", "out", "nov", "dez"]
-    now = datetime.now()
-    mes_atual_label = f"{nomes_mes_pt[now.month - 1]}/{str(now.year)[2:]}"
-    mes_atual_idx = 0
-    for i, m in enumerate(MESES_TODOS):
-        if m == mes_atual_label:
-            mes_atual_idx = i
-            break
-
-    mes_detalhe = st.selectbox(
-        "Mês para consolidado:",
-        MESES_TODOS,
-        index=mes_atual_idx,
-        key="mes_detalhe_sel"
+    # === DETALHAMENTO MENSAL — quitar meses e acompanhar as parcelas ===
+    # KPIs e gráfico de saldo saíram: repetiam a Gestão Executiva. A rosca somava
+    # os 48 meses e o "Total Acumulado" não tinha leitura útil.
+    exibir_detalhamento_mensal(
+        st.session_state.itens,
+        df,
+        lambda: salvar_dados(st.session_state.itens, st.session_state.meses_quitados),
     )
-
-    # Calcular consolidado do mês selecionado
-    debitos_mes = 0
-    creditos_mes = 0
-
-    for item in st.session_state.itens:
-        col_name = item["id"]
-        if col_name in df.columns and mes_detalhe in df["mesAno"].values:
-            valor_mes = df.loc[df["mesAno"] == mes_detalhe, col_name].iloc[0]
-            if item["tipo"] == "credito":
-                creditos_mes += valor_mes
-            else:
-                debitos_mes += abs(valor_mes)
-
-    saldo_mes = creditos_mes - debitos_mes
-
-    # Métricas do mês selecionado
-    # Rótulos curtos: os antigos ("DÉBITOS DO MÊS") truncavam e cortavam o valor.
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Débitos", fmt_brl(debitos_mes), delta=None, delta_color="inverse")
-    col2.metric("Créditos", fmt_brl(creditos_mes), delta=None)
-    col3.metric("Saldo", fmt_brl(saldo_mes), delta=None, delta_color="normal" if saldo_mes >= 0 else "inverse")
-
-    # Status + ação de quitar, lado a lado com o indicador que ela altera.
-    # Roda em fragment: o clique não recarrega gráficos nem tabelas.
-    with col4:
-        bloco_status_mes(
-            mes_detalhe,
-            total_meses,
-            lambda: salvar_dados(st.session_state.itens, st.session_state.meses_quitados),
-        )
-
-    st.divider()
-
-    # ---- Controle de Quitação em lote ----
-    with st.expander("Controle de Quitação — marcar vários meses", expanded=False):
-        painel_quitacao(
-            df,
-            lambda: salvar_dados(st.session_state.itens, st.session_state.meses_quitados),
-        )
-
-    st.divider()
-    
-    col_left, col_right = st.columns(2)
-    
-    with col_left:
-        st.subheader("Evolução Mensal do Saldo")
-        # Preparar dados para o gráfico
-        df_grafico = df[["mesAno", "total"]].copy()
-        df_grafico["cor"] = df_grafico["total"].apply(lambda x: "Positivo" if x >= 0 else "Negativo")
-        
-        fig_evolucao = px.bar(
-            df_grafico, 
-            x="mesAno", 
-            y="total",
-            color="cor",
-            color_discrete_map={"Positivo": CORES_GRAFICOS['positivo'], "Negativo": CORES_GRAFICOS['negativo']},
-            labels={"mesAno": "Mês/Ano", "total": "Saldo (R$)"},
-            title="Saldo Mensal (2025-2028)"
-        )
-        fig_evolucao.update_layout(**get_plotly_layout_theme())
-        fig_evolucao.update_layout(showlegend=False, height=400)
-        st.plotly_chart(fig_evolucao, use_container_width=True)
-    
-    with col_right:
-        st.subheader("Distribuição de Despesas")
-        # Calcular despesas por item
-        despesas_por_item = []
-        for item in st.session_state.itens:
-            if item["tipo"] == "debito":
-                col_name = item["id"]
-                valor_total = df[col_name].sum()
-                if valor_total > 0:
-                    despesas_por_item.append({"Item": item["nome"], "Valor": valor_total})
-        
-        if despesas_por_item:
-            df_despesas = pd.DataFrame(despesas_por_item)
-            fig_pizza = px.pie(
-                df_despesas,
-                values="Valor",
-                names="Item",
-                title="Proporção de Despesas por Item",
-                hole=0.45,
-                color_discrete_sequence=['#C9A96E', '#1C2B4A', '#10B981', '#EF4444', '#E8D5B0', '#6366F1', '#F59E0B', '#6B7280']
-            )
-            fig_pizza.update_traces(
-                textposition='inside',
-                textinfo='percent+label',
-                textfont=dict(family='DM Sans, sans-serif', size=11),
-                marker=dict(line=dict(color='#FFFFFF', width=2))
-            )
-            fig_pizza.update_layout(**get_plotly_layout_theme())
-            fig_pizza.update_layout(height=400)
-            st.plotly_chart(fig_pizza, use_container_width=True)
-        else:
-            st.info("Nenhuma despesa cadastrada.")
-    
-    st.divider()
-    
-    # Tabela de itens
-    st.subheader("Resumo de Itens Cadastrados")
-    
-    if st.session_state.itens:
-        dados_tabela = []
-        for item in st.session_state.itens:
-            col_name = item["id"]
-            valor_total = df[col_name].sum()
-            meses_ativos = get_meses_entre(item["inicio"], item["fim"])
-            total_parcelas_item = len(meses_ativos)
-
-            # Contagem por parcela (antecipada OU vencimento atual em mês quitado).
-            # "Meses quitados + antecipadas" contava duas vezes e chegava a "14/12 (116.7%)".
-            cronograma = calcular_cronograma_atual(item)
-            total_pagas = min(
-                contar_parcelas_pagas(
-                    cronograma.get("mapeamento", {}), meses_ativos, st.session_state.meses_quitados
-                ),
-                total_parcelas_item,
-            )
-            if total_parcelas_item > 0:
-                percentual = (total_pagas / total_parcelas_item) * 100
-                progresso = f"{total_pagas}/{total_parcelas_item} ({percentual:.1f}%)"
-            else:
-                progresso = "0/0 (0.0%)"
-            
-            dados_tabela.append({
-                "Item": item["nome"],
-                "Tipo": "Crédito" if item["tipo"] == "credito" else "Débito",
-                "Valor Mensal": fmt_brl(item["valor"]),
-                "Período": f"{item['inicio']} - {item['fim']}",
-                "Progresso": progresso,
-                "Total Acumulado": fmt_brl(valor_total)
-            })
-        
-        df_tabela = pd.DataFrame(dados_tabela)
-        st.dataframe(df_tabela, use_container_width=True, hide_index=True)
-    else:
-        st.info("Nenhum item cadastrado.")
 
 
 with aba4:
