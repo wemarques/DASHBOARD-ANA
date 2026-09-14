@@ -15,6 +15,8 @@ from github_integration import push_to_github, pull_from_github, get_github_toke
 from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS, get_plotly_layout_theme
 from gestao_executiva import exibir_gestao_executiva  # Gestão Executiva (acerto do mês)
 from detalhamento_mensal import exibir_detalhamento_mensal  # Detalhamento Mensal (quitação)
+from gerenciar_itens import exibir_gerenciar_itens  # Gerenciar Itens (cadastro e reajustes)
+from itens_modelo import serie as serie_do_item  # valor por mês, com reajustes
 
 # Configuração da página
 st.set_page_config(
@@ -711,11 +713,9 @@ def calcular_dataframe():
     # Adicionar todos os itens
     for item in st.session_state.itens:
         col_name = item["id"]
-        df[col_name] = 0.0
-        meses_ativos = get_meses_entre(item["inicio"], item["fim"])
-        
-        # 1. Calcular valores base (recorrência normal)
-        df.loc[df["mesAno"].isin(meses_ativos), col_name] = item["valor"]
+        # 1. Valores base: parcela fixa, ou o valor vigente em cada mês para item
+        #    contínuo com reajustes (itens_modelo.py). Fora do período, 0.
+        df[col_name] = serie_do_item(item, MESES_TODOS)
         
         # 2. Aplicar Antecipações (se feature ativa)
         if FEATURE_ANTECIPACAO and "antecipacoes" in item:
@@ -1069,261 +1069,10 @@ with aba4:
     
 
 with aba3:
-    # Adicionar novo item
-    with st.expander("➕ Adicionar Novo Item de Despesa/Receita", expanded=False):
-        col_nome, col_valor = st.columns(2)
-        nome = col_nome.text_input("Nome do Item", key="add_nome")
-        valor = col_valor.number_input("Valor Mensal (R$)", min_value=0.01, step=10.0, format="%.2f", key="add_valor")
-        
-        col_tipo, col_ini, col_fim = st.columns(3)
-        tipo = col_tipo.selectbox("Tipo", ["debito", "credito"], 
-                                 format_func=lambda x: "Débito (Despesa)" if x == "debito" else "Crédito (Receita)",
-                                 key="add_tipo")
-        inicio = col_ini.selectbox("Mês Início", MESES_TODOS, key="add_inicio")
-        fim = col_fim.selectbox("Mês Fim", MESES_TODOS, index=len(MESES_TODOS)-1, key="add_fim")
-        
-        if st.button("Adicionar Item", type="primary"):
-            if nome.strip():
-                novo_id = f"custom_{len([i for i in st.session_state.itens if i['id'].startswith('custom')])}"
-                st.session_state.itens.append({
-                    "id": novo_id,
-                    "nome": nome.strip(),
-                    "valor": float(valor),
-                    "tipo": tipo,
-                    "inicio": inicio,
-                    "fim": fim
-                })
-                salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-                st.success(f"✅ Item '{nome}' adicionado com sucesso!")
-                st.rerun()
-            else:
-                st.warning("⚠️ O nome do item não pode estar vazio.")
-    
-    st.divider()
-    
-    # Listar e editar/excluir itens
-    if st.session_state.itens:
-        st.subheader("Itens Cadastrados")
-        
-        for i, item in enumerate(st.session_state.itens):
-            with st.expander(f"{item['nome']} — R$ {item['valor']:.2f}", expanded=False):
-                col1, col2 = st.columns([3, 1])
-                
-                with col1:
-                    st.write(f"**Tipo:** {'Crédito (Receita)' if item['tipo'] == 'credito' else 'Débito (Despesa)'}")
-                    
-                    # Exibir período com formato "atual (original)"
-                    contrato = item.get("contrato", {})
-                    cronograma = item.get("cronograma", {})
-                    
-                    if contrato and cronograma:
-                        inicio_original = contrato["inicio_original"]
-                        fim_original = contrato["fim_original"]
-                        inicio_atual = cronograma["inicio_atual"]
-                        fim_atual = cronograma["fim_atual"]
-                        parcelas_pagas = cronograma["parcelas_pagas"]
-                        parcelas_restantes = cronograma["parcelas_restantes"]
-                        
-                        # Verificar se houve antecipações
-                        if parcelas_pagas > 0:
-                            # Formato: jan/26 (mar/26) até out/26 (dez/26)
-                            periodo_texto = (
-                                f"{inicio_atual} ({inicio_original}) até "
-                                f"{fim_atual} ({fim_original})"
-                            )
-                            st.write(f"**Período:** {periodo_texto}")
-                            st.caption(
-                                f"⚡ {parcelas_pagas} parcela(s) antecipada(s) | "
-                                f"{parcelas_restantes} restante(s) de {contrato['total_parcelas']}"
-                            )
-                        else:
-                            # Sem antecipações: exibir normal
-                            st.write(f"**Período:** {inicio_original} até {fim_original}")
-                            st.caption(f"📋 {parcelas_restantes} parcela(s) de {contrato['total_parcelas']}")
-                    else:
-                        # Fallback para formato antigo
-                        st.write(f"**Período:** {item['inicio']} até {item['fim']}")
-                    
-                    st.write(f"**Valor Mensal:** R$ {item['valor']:.2f}")
-                
-                with col2:
-                    if st.button("Editar", key=f"edit_btn_{i}", use_container_width=True):
-                        st.session_state.editando_item = i
-                        st.rerun()
-
-                    # Exclusão era imediata no clique, sem confirmação, logo abaixo
-                    # de "Editar" e com a mesma aparência. Agora exige confirmar.
-                    with st.popover("🗑 Excluir", use_container_width=True):
-                        st.markdown(f"Excluir **{item['nome']}** e todo o seu histórico?")
-                        st.caption("Esta ação não pode ser desfeita.")
-                        if st.button("Sim, excluir", key=f"del_ok_{i}", type="primary"):
-                            nome_excluido = item["nome"]
-                            st.session_state.itens.pop(i)
-                            salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-                            st.toast(f"Item '{nome_excluido}' excluído", icon="🗑️")
-                            st.rerun()
-                
-                # Botão para ver detalhes do contrato
-                if item.get("contrato") and item.get("cronograma"):
-                    if st.button("Ver Detalhes do Contrato", key=f"detalhes_{item['id']}"):
-                        mostrar_detalhes_contrato(item)
-    else:
-        st.info("Nenhum item cadastrado. Adicione um novo item acima.")
-    
-    # Formulário de edição
-    if "editando_item" in st.session_state:
-        idx = st.session_state.editando_item
-        if idx < len(st.session_state.itens):
-            item = st.session_state.itens[idx]
-            
-            st.divider()
-            st.subheader(f"Editando: {item['nome']}")
-            
-            with st.form("form_edicao"):
-                nome_ed = st.text_input("Nome", item["nome"])
-                valor_ed = st.number_input("Valor (R$)", value=item["valor"], min_value=0.01, step=10.0)
-                tipo_ed = st.selectbox("Tipo", ["debito", "credito"], 
-                                      index=0 if item["tipo"] == "debito" else 1,
-                                      format_func=lambda x: "Débito" if x == "debito" else "Crédito")
-                ini_ed = st.selectbox("Início", MESES_TODOS, index=MESES_TODOS.index(item["inicio"]))
-                fim_ed = st.selectbox("Fim", MESES_TODOS, index=MESES_TODOS.index(item["fim"]))
-                
-                col1, col2 = st.columns(2)
-                if col1.form_submit_button("Salvar Alterações", type="primary"):
-                    st.session_state.itens[idx] = {
-                        "id": item["id"],
-                        "nome": nome_ed,
-                        "valor": valor_ed,
-                        "tipo": tipo_ed,
-                        "inicio": ini_ed,
-                        "fim": fim_ed
-                    }
-                    salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-                    del st.session_state.editando_item
-                    st.success("✅ Item atualizado com sucesso!")
-                    st.rerun()
-                
-                if col2.form_submit_button("Cancelar"):
-                    del st.session_state.editando_item
-                    st.rerun()
-    
-    st.divider()
-
-    # Seção: extrato mês a mês, SOMENTE LEITURA.
-    # O header antes se chamava "Detalhamento Mensal" — mesmo nome da aba 2 — e
-    # escondia aqui dentro a única forma de quitar um mês. A ação foi movida para
-    # a aba 2, ao lado do indicador de status, e existe agora em um lugar só.
-    st.header("Extrato Mensal por Ano")
-    st.caption(
-        "Somente leitura. Para marcar meses como quitados use "
-        "**Detalhamento Mensal › Controle de Quitação**."
+    # === GERENCIAR ITENS — o que entra no acerto, reajustes e correções ===
+    # O "Extrato Mensal por Ano" saiu: a Gestão Executiva mostra a conta de cada mês.
+    exibir_gerenciar_itens(
+        df,
+        lambda: salvar_dados(st.session_state.itens, st.session_state.meses_quitados),
+        calcular_cronograma_atual,
     )
-
-    # Agrupar meses por ano (4 expanders: 2025, 2026, 2027, 2028)
-    for ano in [2025, 2026, 2027, 2028]:
-        sufixo_ano = f"/{str(ano)[2:]}"
-        df_ano = df[df["mesAno"].str.endswith(sufixo_ano)].copy()
-
-        if df_ano.empty:
-            continue
-
-        # Calcular resumo do ano
-        meses_quitados_ano = [m for m in st.session_state.meses_quitados if m.endswith(sufixo_ano)]
-        total_meses_ano = len(df_ano)
-        total_quitados_ano = len(meses_quitados_ano)
-        saldo_ano = df_ano["total"].sum()
-        saldo_fmt = f"{abs(saldo_ano):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-        sinal_ano = "+" if saldo_ano >= 0 else "-"
-
-        titulo_ano = f"{ano} — {total_quitados_ano}/{total_meses_ano} meses quitados | Saldo: {sinal_ano} R$ {saldo_fmt}"
-
-        with st.expander(titulo_ano, expanded=False):
-            for _, row in df_ano.iterrows():
-                mes = row["mesAno"]
-                quitado = mes in st.session_state.meses_quitados
-                saldo = row["total"]
-
-                # Header do mês com status
-                status_icon = "✅" if quitado else "📅"
-                status_text = " — QUITADO" if quitado else ""
-                st.markdown(f"### {status_icon} {mes}{status_text}")
-
-                # Listar itens do mês
-                itens_exibidos = False
-                for item in st.session_state.itens:
-                    col_name = item["id"]
-                    valor_item = row[col_name]
-                    if valor_item <= 0:
-                        continue
-
-                    itens_exibidos = True
-
-                    # Contador de prazo (exceto Plano de Saúde)
-                    contador = ""
-                    if item["nome"] != "Plano de Saúde":
-                        cronograma = item.get("cronograma", {})
-                        mapeamento = cronograma.get("mapeamento", {})
-
-                        parcela_info = None
-                        for mes_original, info in mapeamento.items():
-                            if info["vencimento_atual"] == mes:
-                                parcela_info = info
-                                break
-
-                        if parcela_info:
-                            numero = parcela_info["numero"]
-                            total = item["contrato"]["total_parcelas"]
-                            contador = f" (Parcela {numero}/{total})"
-                        else:
-                            meses_ativos = get_meses_entre(item["inicio"], item["fim"])
-                            if mes in meses_ativos:
-                                prest_atual = meses_ativos.index(mes) + 1
-                                total_prest = len(meses_ativos)
-                                contador = f" (PRAZO {prest_atual}/{total_prest})"
-
-                    sinal = "+" if item["tipo"] == "credito" else "-"
-                    valor_fmt = f"{valor_item:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                    st.write(f"**{item['nome']}{contador}:** {sinal} R$ {valor_fmt}")
-
-                if not itens_exibidos:
-                    st.write("_Nenhum item neste mês._")
-
-                # Verificar se há antecipações para este mês
-                antecipacoes_mes = listar_antecipacoes_por_mes(mes)
-
-                if antecipacoes_mes:
-                    st.markdown("---")
-                    st.markdown("**Prestações Antecipadas para este mês:**")
-
-                    for ant in antecipacoes_mes:
-                        def fmt_brl_valor(x):
-                            return f"{x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-                        valor_fmt = fmt_brl_valor(ant['valor'])
-
-                        item_ant = next((i for i in st.session_state.itens if i["nome"] == ant['item_nome']), None)
-
-                        if item_ant:
-                            num_parcela, total_parcelas = calcular_numero_parcela(ant['origem'], item_ant["inicio"], item_ant["fim"])
-
-                            if num_parcela is not None:
-                                texto_parcela = f" (Parcela {num_parcela}/{total_parcelas})"
-                            else:
-                                texto_parcela = " (Fora do fluxo)"
-                        else:
-                            texto_parcela = ""
-
-                        st.markdown(
-                            f"• {ant['origem']}{texto_parcela} ➔ {ant['destino']} (R$ {valor_fmt}) *Prestação Antecipada*",
-                            unsafe_allow_html=True
-                        )
-
-                        if ant['motivo']:
-                            st.caption(f"  Motivo: {ant['motivo']}")
-
-                # Saldo final do mês
-                st.markdown(f"**Saldo:** {formatar_valor_financeiro(saldo)}", unsafe_allow_html=True)
-                st.markdown("---")
-    
-    # Rodapé
-    st.divider()
-    st.caption("Dashboard Ana — Sistema de Gestão Financeira Pessoal | Desenvolvido com Streamlit | Protegido por Senha")

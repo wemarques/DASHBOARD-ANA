@@ -20,6 +20,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from backend_antecipacao import AntecipacaoService
+from itens_modelo import eh_continuo, reajustes
 
 NOMES_MES = ["jan", "fev", "mar", "abr", "mai", "jun",
              "jul", "ago", "set", "out", "nov", "dez"]
@@ -143,9 +144,11 @@ def _detalhe_item(item, mes, meses):
         return f"{qtd}: {', '.join(antecipadas)}"
 
     contrato = item.get("contrato") or {}
-    # total_parcelas = 0 marca item recorrente (ex.: Plano de Saúde).
-    if contrato and not contrato.get("total_parcelas"):
-        return f"mensal, até {item['fim']}"
+    # Contínuo (ex.: Plano de Saúde) não tem data fim nem parcelas.
+    if eh_continuo(item):
+        if any(r["a_partir_de"] == mes for r in reajustes(item, meses)):
+            return "contínuo, reajustado neste mês"
+        return "contínuo"
 
     # Mesma regra do Extrato Mensal: mapeamento (já deslocado) antes do período.
     mapeamento = (item.get("cronograma") or {}).get("mapeamento") or {}
@@ -212,6 +215,8 @@ def _motivo(item, tab, antes, agora):
         return f"{nome} entra na conta"
     if vb <= 0:
         return f"{nome} sai da conta"
+    if eh_continuo(item):
+        return f"{nome}: reajuste para R$ {_brl(vb)}"
     return f"{nome} muda de valor"
 
 

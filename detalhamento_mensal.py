@@ -22,6 +22,7 @@ import html
 import streamlit as st
 
 from gestao_executiva import _brl, _mes_de_hoje, _mes_extenso, _valor_texto
+from itens_modelo import eh_continuo, valor_vigente
 from quitacao_ui import LIMIAR_CONFIRMACAO, _desfazer, _init_state, _rerun_local
 
 # st.html sanitiza o conteúdo e o CSS global do app pinta todo <span>/<p>: por
@@ -48,6 +49,13 @@ _CSS = """
 .st-key-quit_topo .stButton > button[kind="secondary"]:hover,
 .st-key-quit_pendente .stButton > button[kind="secondary"]:hover {
   border-color: #1C2B4A !important; color: #1C2B4A !important; background: #F4F2EE !important; }
+/* Desabilitado precisa parecer desabilitado: o CSS global pinta todo botão de marinho. */
+.st-key-quit_topo .stButton > button:disabled,
+.st-key-quit_pendente .stButton > button:disabled {
+  background: #ECE8E1 !important; color: #6B7280 !important; border: 1px solid #E0DBD2 !important;
+  box-shadow: none !important; cursor: not-allowed !important; }
+.st-key-quit_topo .stButton > button:disabled :is(span, p, div),
+.st-key-quit_pendente .stButton > button:disabled :is(span, p, div) { color: inherit !important; }
 @media (max-width: 560px) { .st-key-quit_topo { padding: 1rem 1rem 1.25rem; } }
 
 .quit .quit-status { display: inline-flex; align-items: center; gap: .45rem; padding: .375rem .7rem; border-radius: 999px; font-size: .8125rem; font-weight: 600; line-height: 1; white-space: nowrap; }
@@ -364,11 +372,16 @@ def _html_itens(itens, tab, meses):
         if not com_valor:
             continue
 
-        total = max(round(float(serie.sum()) / valor), 1)
-        pagas = min(round(sum(float(serie[m]) for m in com_valor if m in quitados) / valor), total)
         primeiro, ultimo = com_valor[0], com_valor[-1]
-        contrato = item.get("contrato") or {}
-        recorrente = bool(contrato) and not contrato.get("total_parcelas")
+        recorrente = eh_continuo(item)
+        if recorrente:
+            # Contínuo: conta meses — com reajustes o valor muda, não dá para dividir.
+            total = len(com_valor)
+            pagas = sum(1 for m in com_valor if m in quitados)
+            valor = valor_vigente(item, meses[i_hoje], meses)
+        else:
+            total = max(round(float(serie.sum()) / valor), 1)
+            pagas = min(round(sum(float(serie[m]) for m in com_valor if m in quitados) / valor), total)
 
         if pagas >= total and meses.index(ultimo) <= i_hoje:
             encerrados.append(item["nome"])
@@ -376,7 +389,7 @@ def _html_itens(itens, tab, meses):
         if meses.index(primeiro) > i_hoje:
             detalhe = f"começa em {primeiro}" if recorrente else f"{total} parcelas, começa em {primeiro}"
         elif recorrente:
-            detalhe = f"{pagas} de {total} meses quitados, até {ultimo}"
+            detalhe = f"contínuo desde {primeiro}, {pagas} {_plural(pagas, 'mês quitado', 'meses quitados')}"
         elif total == 1:
             detalhe = f"parcela única, em {ultimo}"
         else:
@@ -386,19 +399,25 @@ def _html_itens(itens, tab, meses):
         ativos.append({
             "nome": item["nome"], "detalhe": detalhe, "fim": meses.index(ultimo),
             "valor": f"{sinal}R$ {_brl(valor)} por mês",
-            "fracao": pagas / total, "rotulo": f"{pagas} de {total}",
+            "fracao": None if recorrente else pagas / total, "rotulo": f"{pagas} de {total}",
         })
 
     ativos.sort(key=lambda a: a["fim"])
 
     if ativos:
+        def _medidor(a):
+            # Item contínuo não tem fim: sem barra de progresso.
+            if a["fracao"] is None:
+                return ""
+            return (f'<span class="quit-medidor" role="img" aria-label="{a["rotulo"]}">'
+                    f'<span class="quit-medidor-cheio" style="width:{a["fracao"] * 100:.1f}%"></span></span>')
+
         linhas = "".join(
             '<li class="quit-linha"><div class="quit-linha-topo">'
             f'<span class="quit-nome">{esc(a["nome"])}</span>'
             f'<span class="quit-valor">{a["valor"]}</span></div>'
-            f'<span class="quit-medidor" role="img" aria-label="{a["rotulo"]}">'
-            f'<span class="quit-medidor-cheio" style="width:{a["fracao"] * 100:.1f}%"></span></span>'
-            f'<div class="quit-detalhe">{esc(a["detalhe"])}</div></li>'
+            + _medidor(a)
+            + f'<div class="quit-detalhe">{esc(a["detalhe"])}</div></li>'
             for a in ativos
         )
         corpo = f'<ul class="quit-lista">{linhas}</ul>'
