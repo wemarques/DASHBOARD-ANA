@@ -13,7 +13,7 @@ import config_manager  # Novo gerenciador de config
 from backend_antecipacao import AntecipacaoService  # Backend Antecipação
 from github_integration import push_to_github, pull_from_github, get_github_token, diagnosticar_token, _ultimo_erro_push  # Integração GitHub
 from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS, get_plotly_layout_theme
-from gestao_executiva import exibir_gestao_executiva, exibir_resumo_executivo  # Gestão Executiva
+from gestao_executiva import exibir_gestao_executiva  # Gestão Executiva (acerto do mês)
 from quitacao_ui import bloco_status_mes, painel_quitacao  # Controle de Quitação (UX)
 
 # Configuração da página
@@ -787,38 +787,10 @@ df = calcular_dataframe()
 aba1, aba2, aba3, aba4 = st.tabs(["Gestão Executiva", "Detalhamento Mensal", "Gerenciar Itens", "Antecipar Parcelas"])
 
 with aba1:
-    # === GESTÃO EXECUTIVA - RESULTADO MENSAL ===
-    st.header("Gestão Executiva — Resultado Mensal")
-    
-    # Resumo Executivo Rápido
-    st.subheader("Resumo Executivo")
-    exibir_resumo_executivo(st.session_state.itens, st.session_state.meses_quitados, df)
-    
-    st.divider()
-    
-    # Seletor de mês para análise executiva detalhada
-    mes_atual = datetime.now().strftime("%b/%y").lower()
-    meses_disponiveis = list(df['mesAno'])
-    
-    # Encontrar o mês mais próximo da data atual
-    mes_default = meses_disponiveis[0]
-    for mes in meses_disponiveis:
-        try:
-            mes_dt = datetime.strptime(mes, "%b/%y")
-            if mes_dt <= datetime.now():
-                mes_default = mes
-        except:
-            continue
-    
-    mes_selecionado = st.selectbox(
-        "Selecione o mês para análise executiva detalhada:",
-        meses_disponiveis,
-        index=meses_disponiveis.index(mes_default) if mes_default in meses_disponiveis else 0,
-        key="mes_executivo"
-    )
-    
-    # Chamar a função de gestão executiva detalhada
-    exibir_gestao_executiva(st.session_state.itens, st.session_state.meses_quitados, df, mes_selecionado)
+    # === GESTÃO EXECUTIVA — o acerto do mês entre você e a Ana ===
+    # O seletor de mês agora vive dentro do módulo. O antigo usava strptime("%b/%y"),
+    # que não reconhece "fev", "set", "dez"... e caía sempre num mês errado.
+    exibir_gestao_executiva(st.session_state.itens, st.session_state.meses_quitados, df)
 
 with aba2:
     # === DETALHAMENTO MENSAL (CONTEÚDO EXISTENTE) ===
