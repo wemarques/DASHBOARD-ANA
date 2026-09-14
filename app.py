@@ -402,6 +402,27 @@ def calcular_cronograma_atual(item):
         "mapeamento": mapeamento
     }
 
+def contar_parcelas_pagas(mapeamento, meses_periodo, quitados):
+    """Conta parcelas pagas por PARCELA, não por mês.
+
+    Uma parcela está paga se foi antecipada ou se o mês em que ela vence hoje
+    (vencimento_atual, já deslocado pelas antecipações) está em meses_quitados.
+    Somar "meses quitados do período + antecipadas" conta o mês que ficou vazio
+    após o deslocamento como se fosse parcela, e min(..., total) só esconde o
+    excesso quando passa de 100%. Ex.: Bancorbras (6 antecipadas, pendentes
+    vencendo jan..jun/26) com jan/26 + jul/26 + ago/26 quitados dava 9/12; a
+    tabela de mapeamento, com a regra correta, mostra 7/12.
+
+    Sem mapeamento (item sem contrato), vale a regra antiga: meses do período
+    que estão em meses_quitados.
+    """
+    if not mapeamento:
+        return sum(1 for m in meses_periodo if m in quitados)
+    return sum(
+        1 for info in mapeamento.values()
+        if info["status"] == "antecipada" or info["vencimento_atual"] in quitados
+    )
+
 def calcular_numero_parcela(mes, inicio, fim):
     """
     Calcula o número da parcela de um mês dentro do range inicio-fim.
@@ -461,9 +482,11 @@ def mostrar_detalhes_contrato(item):
     # O JSON traz total_parcelas = 0 em itens antigos (ex.: Plano de Saúde), o que
     # zerava "Total de Parcelas" e "Valor Total". Derivamos do período nesse caso.
     total_parcelas = contrato.get("total_parcelas") or len(meses_item)
-    antecipadas = cronograma.get("parcelas_pagas", 0)
-    quitadas = sum(1 for m in meses_item if m in quitados)
-    pagas = min(quitadas + antecipadas, total_parcelas)
+    # Contagem por PARCELA (mesma regra da tabela de mapeamento abaixo), não por mês.
+    pagas = min(
+        contar_parcelas_pagas(cronograma.get("mapeamento", {}), meses_item, quitados),
+        total_parcelas,
+    )
 
     st.markdown("---")
     st.markdown("### Detalhes do Contrato")
@@ -806,7 +829,6 @@ with aba2:
         return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
     # Seletor de mês para o consolidado
-    meses_quit = len(st.session_state.meses_quitados)
     total_meses = len(MESES_TODOS)
 
     nomes_mes_pt = ["jan", "fev", "mar", "abr", "mai", "jun",
@@ -935,16 +957,15 @@ with aba2:
             meses_ativos = get_meses_entre(item["inicio"], item["fim"])
             total_parcelas_item = len(meses_ativos)
 
-            # Contar parcelas quitadas (meses marcados como quitados)
-            parcelas_quitadas = sum(1 for m in meses_ativos if m in st.session_state.meses_quitados)
-
-            # Contar parcelas antecipadas (via cronograma de antecipações)
+            # Contagem por parcela (antecipada OU vencimento atual em mês quitado).
+            # "Meses quitados + antecipadas" contava duas vezes e chegava a "14/12 (116.7%)".
             cronograma = calcular_cronograma_atual(item)
-            parcelas_antecipadas = cronograma.get("parcelas_pagas", 0)
-
-            # Um mês quitado que também recebeu antecipação era contado duas vezes,
-            # produzindo progresso acima de 100% (ex.: "14/12 (116.7%)").
-            total_pagas = min(parcelas_quitadas + parcelas_antecipadas, total_parcelas_item)
+            total_pagas = min(
+                contar_parcelas_pagas(
+                    cronograma.get("mapeamento", {}), meses_ativos, st.session_state.meses_quitados
+                ),
+                total_parcelas_item,
+            )
             if total_parcelas_item > 0:
                 percentual = (total_pagas / total_parcelas_item) * 100
                 progresso = f"{total_pagas}/{total_parcelas_item} ({percentual:.1f}%)"

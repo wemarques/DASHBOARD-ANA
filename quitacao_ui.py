@@ -10,9 +10,10 @@ Princípios de UX aplicados:
     exige confirmação explícita. Toda gravação guarda snapshot para "Desfazer".
   - FEEDBACK: st.toast na gravação + coluna "Situação salva" que distingue o estado
     já persistido da intenção pendente.
-  - EFICIÊNCIA: o toggle do mês roda em @st.fragment (rerun local, sem recarregar
-    gráficos). O lote grava N meses com UMA chamada a salvar_dados (= 1 push GitHub),
-    em vez de um push por clique.
+  - EFICIÊNCIA: o painel em lote roda em @st.fragment (filtro/ano/editor sem
+    recarregar gráficos) e grava N meses com UMA chamada a salvar_dados
+    (= 1 push GitHub), em vez de um push por clique. Toda GRAVAÇÃO faz rerun
+    completo: meses_quitados é lido por KPIs, Progresso, Extrato e Gestão Executiva.
 """
 
 import streamlit as st
@@ -57,11 +58,14 @@ def _desfazer(salvar_fn):
 # ==========================================================================
 # 1) Status + toggle do mês selecionado  (fica dentro da coluna de KPIs)
 # ==========================================================================
-@st.fragment
 def bloco_status_mes(mes, total_meses, salvar_fn):
     """KPI de status + ação de quitar/reabrir o mês selecionado.
 
-    Roda isolado em fragment: o clique NÃO recarrega gráficos nem tabelas.
+    NÃO roda em fragment: meses_quitados alimenta o Resumo de Itens (Progresso),
+    a Gestão Executiva, o Extrato por ano e o painel em lote. Com rerun local,
+    tudo isso ficava mostrando o estado anterior até a próxima interação
+    (medido em navegador: Progresso 20/48 antes e 20/48 depois de quitar set/26).
+    O custo do rerun completo é menor que uma tela inconsistente.
     """
     _init_state()
 
@@ -93,7 +97,7 @@ def bloco_status_mes(mes, total_meses, salvar_fn):
             st.session_state.quitacao_undo_label = f"{mes} quitado"
             st.toast(f"✅ {mes} marcado como quitado", icon="✅")
         salvar_fn()
-        _rerun_local()
+        st.rerun()  # full: KPIs, Progresso dos itens, extrato e painel em lote
 
     if st.session_state.quitacao_undo is not None:
         if st.button(
