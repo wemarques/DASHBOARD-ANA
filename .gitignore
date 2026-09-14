@@ -43,4 +43,9 @@ env/
 .DS_Store
 
 # Streamlit
-.streamlit/
+# Ignora tudo em .streamlit/ (secrets.toml real fica de fora do repositório),
+# exceto o tema e o arquivo de exemplo.
+.streamlit/*
+!.streamlit/config.toml
+!.streamlit/secrets.toml.example
+.streamlit/secrets.toml

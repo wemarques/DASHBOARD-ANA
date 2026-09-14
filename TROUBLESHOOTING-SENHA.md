@@ -2,9 +2,9 @@
 
 ## ✅ Hash Verificado
 
-O hash no arquivo está **CORRETO** para a senha `ana2025`:
-- Hash no arquivo: `5fd698c40bb0cc98f7c00994b523dec70d4ddc3393e6d67de47a3c11be2d1984`
-- Senha correspondente: `ana2025`
+O hash no arquivo está **CORRETO** para a senha `<sua senha>`:
+- Hash no arquivo: `<hash configurado em Secrets: SENHA_HASH>`
+- Senha correspondente: `<sua senha>`
 
 ## 🔍 Soluções Possíveis
 
@@ -42,7 +42,7 @@ streamlit cache clear
 
 ### 4. Verificar se Digitou Corretamente
 
-Certifique-se de digitar exatamente: `ana2025`
+Certifique-se de digitar exatamente: `<sua senha>`
 - Sem espaços antes ou depois
 - Tudo minúsculo
 - Sem caracteres especiais ocultos
@@ -76,10 +76,10 @@ Se você já estava autenticado antes, pode haver um estado antigo:
 Execute este comando para verificar o hash:
 
 ```powershell
-python -c "import hashlib; print(hashlib.sha256('ana2025'.encode()).hexdigest())"
+python -c "import hashlib; print(hashlib.sha256('<sua senha>'.encode()).hexdigest())"
 ```
 
-Deve retornar: `5fd698c40bb0cc98f7c00994b523dec70d4ddc3393e6d67de47a3c11be2d1984`
+Deve retornar: `<hash configurado em Secrets: SENHA_HASH>`
 
 ## ✅ Se Nada Funcionar
 
@@ -89,7 +89,7 @@ Deve retornar: `5fd698c40bb0cc98f7c00994b523dec70d4ddc3393e6d67de47a3c11be2d1984
 4. Reinicie o Streamlit
 5. Abra uma nova janela anônima
 6. Acesse `http://localhost:8501`
-7. Digite: `ana2025`
+7. Digite: `<sua senha>`
 
 ---
 

@@ -8,11 +8,13 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 import hashlib
+import hmac
 import config_manager  # Novo gerenciador de config
 from backend_antecipacao import AntecipacaoService  # Backend Antecipação
 from github_integration import push_to_github, pull_from_github, get_github_token, diagnosticar_token, _ultimo_erro_push  # Integração GitHub
 from streamlit_custom_styles import aplicar_estilos_customizados, formatar_valor_financeiro, CORES_GRAFICOS, get_plotly_layout_theme
 from gestao_executiva import exibir_gestao_executiva, exibir_resumo_executivo  # Gestão Executiva
+from quitacao_ui import bloco_status_mes, painel_quitacao  # Controle de Quitação (UX)
 
 # Configuração da página
 st.set_page_config(
@@ -34,24 +36,75 @@ antecipacao_service = AntecipacaoService()
 # ========================================
 # SISTEMA DE AUTENTICAÇÃO
 # ========================================
+def obter_senha_hash():
+    """Hash SHA256 da senha de acesso, vindo de st.secrets ou do ambiente.
+
+    O hash NÃO fica mais no código: o repositório precisa ser público para o
+    Streamlit Community Cloud gratuito, e um hash versionado equivale a publicar
+    a senha. Ordem de busca:
+
+        1. st.secrets["SENHA_HASH"]          (Streamlit Cloud › Settings › Secrets)
+        2. st.secrets["auth"]["senha_hash"]  (forma em seção, se preferir)
+        3. variável de ambiente DASHBOARD_ANA_SENHA_HASH  (execução local)
+
+    Se nada estiver configurado, retorna "" e o app NÃO autentica ninguém
+    (fail closed) — melhor travado do que aberto com senha conhecida.
+    """
+    try:
+        if "SENHA_HASH" in st.secrets:
+            return str(st.secrets["SENHA_HASH"]).strip().lower()
+        auth = st.secrets.get("auth", {})
+        if isinstance(auth, dict) or hasattr(auth, "get"):
+            valor = auth.get("senha_hash")
+            if valor:
+                return str(valor).strip().lower()
+    except Exception:
+        # Sem arquivo de secrets configurado: cai no ambiente.
+        pass
+    return os.environ.get("DASHBOARD_ANA_SENHA_HASH", "").strip().lower()
+
+
+def _mostrar_instrucoes_secrets():
+    """Tela exibida quando o hash da senha não está configurado."""
+    st.error("🔒 Acesso não configurado: o hash da senha não foi encontrado.")
+    st.markdown(
+        """
+Este app não guarda mais a senha no código. Configure o hash **antes** de usar:
+
+**No Streamlit Cloud** — app › `⋮` › **Settings** › **Secrets**, e acrescente:
+
+```toml
+SENHA_HASH = "cole_aqui_o_hash_sha256"
+```
+
+**Localmente** — crie `.streamlit/secrets.toml` (já ignorado pelo git) com a
+mesma linha, ou exporte `DASHBOARD_ANA_SENHA_HASH`.
+
+Para gerar o hash da senha que você escolher, rode `python gerar_senha.py`.
+        """
+    )
+
+
 def verificar_senha():
     """Retorna True se o usuário digitou a senha correta."""
-    
+
     def hash_senha(senha):
         """Gera hash SHA256 da senha"""
         return hashlib.sha256(senha.encode()).hexdigest()
-    
-    # Senha padrão: "ana2025" (você pode mudar)
-    # Hash SHA256 de "ana2025"
-    SENHA_HASH = "5fd698c40bb0cc98f7c00994b523dec70d4ddc3393e6d67de47a3c11be2d1984"
-    
+
+    SENHA_HASH = obter_senha_hash()
+
     # Verificar se já está autenticado
     if "autenticado" not in st.session_state:
         st.session_state.autenticado = False
     
     if st.session_state.autenticado:
         return True
-    
+
+    if not SENHA_HASH:
+        _mostrar_instrucoes_secrets()
+        return False
+
     # Tela de login
     st.markdown("""
     <div style='
@@ -111,7 +164,9 @@ def verificar_senha():
                 senha = senha_digitada
             
             # Verificar senha
-            if senha and hash_senha(senha) == SENHA_HASH:
+            # compare_digest: comparação em tempo constante, não vaza o hash
+            # pelo tempo de resposta.
+            if senha and hmac.compare_digest(hash_senha(senha), SENHA_HASH):
                 st.session_state.autenticado = True
                 # Não podemos limpar senha_input manualmente - é controlado pelo widget
                 st.rerun()
@@ -120,7 +175,11 @@ def verificar_senha():
                 # Não podemos limpar senha_input manualmente - o usuário pode limpar manualmente
         
         if ajuda_pressionado:
-            st.info("💡 **Senha padrão**: ana2025\n\nPara alterar a senha, edite o arquivo `app.py` ou entre em contato com o administrador.")
+            st.info(
+                "💡 A senha é definida em **Secrets** (`SENHA_HASH`), não no código.\n\n"
+                "Para trocá-la: rode `python gerar_senha.py`, copie o hash gerado e "
+                "atualize o segredo `SENHA_HASH` no Streamlit Cloud."
+            )
     
     st.markdown("---")
     st.caption("Acesso protegido por senha | Dashboard Ana © 2026")
@@ -393,56 +452,91 @@ def mostrar_detalhes_contrato(item):
         st.warning("🚧 Dados do contrato não disponíveis. Execute a migração de dados.")
         return
     
+    def _brl(x):
+        return f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+    meses_item = get_meses_entre(item["inicio"], item["fim"])
+    quitados = st.session_state.get("meses_quitados", [])
+
+    # O JSON traz total_parcelas = 0 em itens antigos (ex.: Plano de Saúde), o que
+    # zerava "Total de Parcelas" e "Valor Total". Derivamos do período nesse caso.
+    total_parcelas = contrato.get("total_parcelas") or len(meses_item)
+    antecipadas = cronograma.get("parcelas_pagas", 0)
+    quitadas = sum(1 for m in meses_item if m in quitados)
+    pagas = min(quitadas + antecipadas, total_parcelas)
+
     st.markdown("---")
     st.markdown("### Detalhes do Contrato")
-    
+
     # Contrato Original
     st.markdown("**CONTRATO ORIGINAL**")
     col1, col2 = st.columns(2)
     with col1:
         st.metric("Período", f"{contrato['inicio_original']} a {contrato['fim_original']}")
-        st.metric("Total de Parcelas", contrato['total_parcelas'])
+        st.metric("Total de Parcelas", total_parcelas)
     with col2:
-        st.metric("Valor por Parcela", f"R$ {contrato['valor_parcela']:,.2f}")
-        valor_total = contrato['valor_parcela'] * contrato['total_parcelas']
-        st.metric("Valor Total", f"R$ {valor_total:,.2f}")
-    
+        st.metric("Valor por Parcela", _brl(contrato["valor_parcela"]))
+        valor_total = contrato['valor_parcela'] * total_parcelas
+        st.metric("Valor Total", _brl(valor_total))
+
     st.markdown("---")
-    
+
     # Cronograma Atual
     st.markdown("**CRONOGRAMA ATUAL (após antecipações)**")
     col1, col2 = st.columns(2)
     with col1:
         st.metric("Período", f"{cronograma['inicio_atual']} a {cronograma['fim_atual']}")
-        st.metric("Parcelas Pagas", f"{cronograma['parcelas_pagas']}/{contrato['total_parcelas']}")
+        # Antes contava só antecipações, e dava "0/24" mesmo com meses quitados.
+        st.metric("Parcelas Pagas", f"{pagas}/{total_parcelas}",
+                  help="Meses quitados + parcelas antecipadas.")
     with col2:
-        valor_pago = cronograma['parcelas_pagas'] * contrato['valor_parcela']
-        st.metric("Valor Pago", f"R$ {valor_pago:,.2f}")
-        valor_restante = cronograma['parcelas_restantes'] * contrato['valor_parcela']
-        st.metric("Valor Restante", f"R$ {valor_restante:,.2f}")
-    
+        valor_pago = pagas * contrato['valor_parcela']
+        st.metric("Valor Pago", _brl(valor_pago))
+        valor_restante = max(total_parcelas - pagas, 0) * contrato['valor_parcela']
+        st.metric("Valor Restante", _brl(valor_restante))
+
     st.markdown("---")
-    
-    # Mapeamento de Parcelas
+
+    # Mapeamento de Parcelas — tabela com 3 estados reais
     st.markdown("**MAPEAMENTO DE PARCELAS**")
-    
+
     mapeamento = cronograma.get("mapeamento", {})
+    linhas = []
+
     if mapeamento:
         for mes_original, info in mapeamento.items():
-            numero = info["numero"]
-            vencimento = info["vencimento_atual"]
-            status = info["status"]
-            
-            if status == "antecipada":
-                st.markdown(
-                    f"• Parcela {numero}/{contrato['total_parcelas']} "
-                    f"({mes_original}) → **{vencimento}** ✅ *Antecipada*"
-                )
+            venc = info["vencimento_atual"]
+            if info["status"] == "antecipada":
+                situacao = "⚡ Antecipada"
+            elif venc in quitados:
+                situacao = "✅ Quitada"
             else:
-                st.markdown(
-                    f"• Parcela {numero}/{contrato['total_parcelas']} "
-                    f"({mes_original}) → **{vencimento}** ⏳ *Pendente*"
-                )
+                situacao = "⏳ A vencer"
+            linhas.append({
+                "Parcela": f"{info['numero']}/{total_parcelas}",
+                "Competência": mes_original,
+                "Vencimento": venc,
+                "Situação": situacao,
+            })
+    else:
+        # Sem mapeamento gravado: derivamos do período para não exibir lista vazia.
+        for n, mes in enumerate(meses_item, start=1):
+            linhas.append({
+                "Parcela": f"{n}/{total_parcelas}",
+                "Competência": mes,
+                "Vencimento": mes,
+                "Situação": "✅ Quitada" if mes in quitados else "⏳ A vencer",
+            })
+
+    if linhas:
+        df_map = pd.DataFrame(linhas)
+        resumo = df_map["Situação"].value_counts().to_dict()
+        st.caption(" · ".join(f"{k}: {v}" for k, v in resumo.items())
+                   + "  —  para alterar, use **Detalhamento Mensal › Controle de Quitação**.")
+        st.dataframe(df_map, use_container_width=True, hide_index=True,
+                     height=min(38 * len(df_map) + 38, 420))
+    else:
+        st.info("Este item não possui parcelas mapeadas.")
 
 def migrar_dados_para_novo_formato():
     """
@@ -746,15 +840,32 @@ with aba2:
                 debitos_mes += abs(valor_mes)
 
     saldo_mes = creditos_mes - debitos_mes
-    status_mes = "QUITADO" if mes_detalhe in st.session_state.meses_quitados else "PENDENTE"
 
     # Métricas do mês selecionado
+    # Rótulos curtos: os antigos ("DÉBITOS DO MÊS") truncavam e cortavam o valor.
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("DÉBITOS DO MÊS", fmt_brl(debitos_mes), delta=None, delta_color="inverse")
-    col2.metric("CRÉDITOS DO MÊS", fmt_brl(creditos_mes), delta=None)
-    col3.metric("SALDO DO MÊS", fmt_brl(saldo_mes), delta=None, delta_color="normal" if saldo_mes >= 0 else "inverse")
-    col4.metric("STATUS", status_mes, delta=f"{meses_quit}/{total_meses} quitados")
-    
+    col1.metric("Débitos", fmt_brl(debitos_mes), delta=None, delta_color="inverse")
+    col2.metric("Créditos", fmt_brl(creditos_mes), delta=None)
+    col3.metric("Saldo", fmt_brl(saldo_mes), delta=None, delta_color="normal" if saldo_mes >= 0 else "inverse")
+
+    # Status + ação de quitar, lado a lado com o indicador que ela altera.
+    # Roda em fragment: o clique não recarrega gráficos nem tabelas.
+    with col4:
+        bloco_status_mes(
+            mes_detalhe,
+            total_meses,
+            lambda: salvar_dados(st.session_state.itens, st.session_state.meses_quitados),
+        )
+
+    st.divider()
+
+    # ---- Controle de Quitação em lote ----
+    with st.expander("Controle de Quitação — marcar vários meses", expanded=False):
+        painel_quitacao(
+            df,
+            lambda: salvar_dados(st.session_state.itens, st.session_state.meses_quitados),
+        )
+
     st.divider()
     
     col_left, col_right = st.columns(2)
@@ -831,7 +942,9 @@ with aba2:
             cronograma = calcular_cronograma_atual(item)
             parcelas_antecipadas = cronograma.get("parcelas_pagas", 0)
 
-            total_pagas = parcelas_quitadas + parcelas_antecipadas
+            # Um mês quitado que também recebeu antecipação era contado duas vezes,
+            # produzindo progresso acima de 100% (ex.: "14/12 (116.7%)").
+            total_pagas = min(parcelas_quitadas + parcelas_antecipadas, total_parcelas_item)
             if total_parcelas_item > 0:
                 percentual = (total_pagas / total_parcelas_item) * 100
                 progresso = f"{total_pagas}/{total_parcelas_item} ({percentual:.1f}%)"
@@ -1197,15 +1310,21 @@ with aba3:
                     st.write(f"**Valor Mensal:** R$ {item['valor']:.2f}")
                 
                 with col2:
-                    if st.button("Editar", key=f"edit_btn_{i}"):
+                    if st.button("Editar", key=f"edit_btn_{i}", use_container_width=True):
                         st.session_state.editando_item = i
                         st.rerun()
-                    
-                    if st.button("Excluir", key=f"del_btn_{i}", type="secondary"):
-                        st.session_state.itens.pop(i)
-                        salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-                        st.success(f"✅ Item '{item['nome']}' excluído com sucesso!")
-                        st.rerun()
+
+                    # Exclusão era imediata no clique, sem confirmação, logo abaixo
+                    # de "Editar" e com a mesma aparência. Agora exige confirmar.
+                    with st.popover("🗑 Excluir", use_container_width=True):
+                        st.markdown(f"Excluir **{item['nome']}** e todo o seu histórico?")
+                        st.caption("Esta ação não pode ser desfeita.")
+                        if st.button("Sim, excluir", key=f"del_ok_{i}", type="primary"):
+                            nome_excluido = item["nome"]
+                            st.session_state.itens.pop(i)
+                            salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
+                            st.toast(f"Item '{nome_excluido}' excluído", icon="🗑️")
+                            st.rerun()
                 
                 # Botão para ver detalhes do contrato
                 if item.get("contrato") and item.get("cronograma"):
@@ -1253,8 +1372,15 @@ with aba3:
     
     st.divider()
 
-    # Seção: Visualização por mês (agrupado por ano)
-    st.header("Detalhamento Mensal")
+    # Seção: extrato mês a mês, SOMENTE LEITURA.
+    # O header antes se chamava "Detalhamento Mensal" — mesmo nome da aba 2 — e
+    # escondia aqui dentro a única forma de quitar um mês. A ação foi movida para
+    # a aba 2, ao lado do indicador de status, e existe agora em um lugar só.
+    st.header("Extrato Mensal por Ano")
+    st.caption(
+        "Somente leitura. Para marcar meses como quitados use "
+        "**Detalhamento Mensal › Controle de Quitação**."
+    )
 
     # Agrupar meses por ano (4 expanders: 2025, 2026, 2027, 2028)
     for ano in [2025, 2026, 2027, 2028]:
@@ -1284,15 +1410,6 @@ with aba3:
                 status_icon = "✅" if quitado else "📅"
                 status_text = " — QUITADO" if quitado else ""
                 st.markdown(f"### {status_icon} {mes}{status_text}")
-
-                # Botão para alternar QUITADO
-                if st.button("Alternar Quitação", key=f"btn_{mes}"):
-                    if quitado:
-                        st.session_state.meses_quitados.remove(mes)
-                    else:
-                        st.session_state.meses_quitados.append(mes)
-                    salvar_dados(st.session_state.itens, st.session_state.meses_quitados)
-                    st.rerun()
 
                 # Listar itens do mês
                 itens_exibidos = False

@@ -2,7 +2,7 @@
 
 ## 🔑 Senha Padrão
 
-**Senha atual:** `ana2025`
+**Senha atual:** `<sua senha>`
 
 ---
 

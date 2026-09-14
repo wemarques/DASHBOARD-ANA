@@ -8,9 +8,9 @@ def hash_senha(senha):
     """Gera hash SHA256 da senha"""
     return hashlib.sha256(senha.encode()).hexdigest()
 
-# Testar com a senha "ana2025"
-senha_teste = "ana2025"
-hash_atual_arquivo = "5fd698c40bb0cc98f7c00994b523dec70d4ddc3393e6d67de47a3c11be2d1984"
+# Testar com a senha "<sua senha>"
+senha_teste = "<sua senha>"
+hash_atual_arquivo = "<hash configurado em Secrets: SENHA_HASH>"
 
 hash_calculado = hash_senha(senha_teste)
 

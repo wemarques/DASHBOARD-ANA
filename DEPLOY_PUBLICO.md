@@ -7,7 +7,7 @@ Agora que o Dashboard Ana está protegido por senha, você pode publicá-lo de f
 ## 🔐 Sistema de Autenticação
 
 ✅ **Tela de login implementada**  
-✅ **Senha padrão:** `ana2025`  
+✅ **Senha padrão:** `<sua senha>`  
 ✅ **Hash SHA256** (seguro)  
 ✅ **Botão de logout** na sidebar  
 
@@ -152,7 +152,7 @@ Siga as instruções na tela e copie o hash gerado.
 2. **Compartilhe o link** + **senha** com quem você quiser:
    ```
    🔗 Link: https://dashboard-ana.streamlit.app
-   🔑 Senha: ana2025
+   🔑 Senha: <sua senha>
    ```
 
 3. **Só quem tiver a senha** consegue acessar os dados!
@@ -168,7 +168,7 @@ Siga as instruções na tela e copie o hash gerado.
 
 ### ⚠️ Importante:
 - **Não compartilhe a senha publicamente**
-- **Troque a senha padrão** (`ana2025`) por uma senha forte
+- **Troque a senha padrão** (`<sua senha>`) por uma senha forte
 - **Use senhas diferentes** para cada pessoa (se necessário, crie múltiplas versões)
 
 ### 💡 Dicas de Senha Forte:

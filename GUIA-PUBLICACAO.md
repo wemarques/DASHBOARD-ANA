@@ -75,7 +75,7 @@ Como sua aplicação tem senha, você pode:
 2. Adicione:
 ```toml
 [senha]
-HASH = "5fd698c40bb0cc98f7c00994b523dec70d4ddc3393e6d67de47a3c11be2d1984"
+HASH = "<hash configurado em Secrets: SENHA_HASH>"
 ```
 
 ---

@@ -3,8 +3,8 @@
 ## ✅ Verificação
 
 O hash está **correto** no código:
-- Hash no arquivo: `5fd698c40bb0cc98f7c00994b523dec70d4ddc3393e6d67de47a3c11be2d1984`
-- Senha correspondente: `ana2025`
+- Hash no arquivo: `<hash configurado em Secrets: SENHA_HASH>`
+- Senha correspondente: `<sua senha>`
 
 ## 🔍 Possíveis Causas
 
@@ -28,7 +28,7 @@ O hash está **correto** no código:
 **Verifique:**
 1. Acesse: https://github.com/wemarques/DASHBOARD-ANA/blob/master/app.py
 2. Procure pela linha com `SENHA_HASH`
-3. Deve ser: `SENHA_HASH = "5fd698c40bb0cc98f7c00994b523dec70d4ddc3393e6d67de47a3c11be2d1984"`
+3. Deve ser: `SENHA_HASH = "<hash configurado em Secrets: SENHA_HASH>"`
 
 **Se estiver diferente:**
 1. Faça commit novamente:
@@ -42,7 +42,7 @@ git push origin master
 ### 4. Erro ao Digitar
 
 **Certifique-se de:**
-- Digitar exatamente: `ana2025`
+- Digitar exatamente: `<sua senha>`
 - Tudo minúsculo
 - Sem espaços antes ou depois
 - Sem caracteres especiais ocultos
@@ -63,7 +63,7 @@ git push origin master
 3. **Teste novamente:**
    - Abra uma janela anônima
    - Acesse o link do Streamlit Cloud
-   - Digite: `ana2025`
+   - Digite: `<sua senha>`
 
 ## 🧪 Teste Local Primeiro
 
