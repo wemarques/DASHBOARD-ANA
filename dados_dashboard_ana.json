@@ -539,7 +539,7 @@
     {
       "id": "item_8262919d",
       "nome": "Passagem Aérea Niver Mãe",
-      "valor": 363.19,
+      "valor": 181.59,
       "tipo": "debito",
       "inicio": "out/26",
       "fim": "jan/27",
@@ -549,7 +549,7 @@
         "inicio_original": "out/26",
         "fim_original": "jan/27",
         "total_parcelas": 4,
-        "valor_parcela": 363.19
+        "valor_parcela": 181.59
       },
       "cronograma": {
         "inicio_atual": "out/26",
